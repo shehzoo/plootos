@@ -1,0 +1,31 @@
+{
+  "name": "plootos",
+  "version": "1.0.0",
+  "description": "Appli de budget familial",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build && wrangler dev",
+    "test": "vitest run",
+    "typecheck": "tsc -p worker && tsc -p web",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "hono": "4.13.21",
+    "jose": "6.2.18",
+    "preact": "11.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "7.29.13",
+    "@cloudflare/workers-types": "5.20261124.1",
+    "@preact/preset-vite": "2.10.6",
+    "typescript": "5.9.3",
+    "vite": "8.3.8",
+    "vitest": "4.1.12",
+    "wrangler": "4.167.0"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  }
+}

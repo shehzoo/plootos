@@ -1,0 +1,58 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Default (no --env): local development only, never deployed.
+  "name": "plootos-local",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-11-24",
+  // Local default: nothing published. Staging and production are reached only
+  // through their workers.dev address, behind Access (spec 4.7).
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist/web",
+    "binding": "ASSETS",
+    // Every request, static files included, goes through the token check.
+    "run_worker_first": true,
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "plootos-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "env": {
+    // "Plootos Staging" Cloudflare account (recette), fictitious data only,
+    // app.plootos-staging.workers.dev behind Access.
+    "staging": {
+      "name": "app",
+      "workers_dev": true,
+      "preview_urls": false,
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "plootos-staging",
+          "database_id": "e24f3d1a-12a7-416f-aa0b-7dd922a58882",
+          "migrations_dir": "migrations"
+        }
+      ]
+    },
+    // "Plootos Prod" Cloudflare account, app.plootos.workers.dev behind Access;
+    // deployed only from the main branch.
+    "production": {
+      "name": "app",
+      "workers_dev": true,
+      "preview_urls": false,
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "plootos",
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
+}
