@@ -1,19 +1,35 @@
 import { Hono } from 'hono'
-import type { MeResponse } from '../../shared/src/api'
+import type { ApiError, MeResponse } from '../../shared/src/api'
 import { accessAuth, type AccessAuthOptions } from './auth'
+import { readAll, RestoreInProgressError } from './read'
+import { apiVersionCheck, securityHeaders, writeChecks } from './security'
+import { serverToday } from './today'
 import type { AppEnv } from './types'
 
 export function createApp(options: AccessAuthOptions = {}) {
   const app = new Hono<AppEnv>()
 
+  app.use('*', securityHeaders)
   app.use('*', accessAuth(options))
+  app.use('/api/*', apiVersionCheck)
+  app.use('/api/*', writeChecks)
 
   app.get('/api/me', (c) => {
     const body: MeResponse = { firstName: c.get('user').firstName }
-    return c.json(body, 200, { 'Cache-Control': 'no-store' })
+    return c.json(body)
   })
 
-  app.all('/api/*', (c) => c.json({ error: 'not_found' }, 404, { 'Cache-Control': 'no-store' }))
+  app.get('/api/data', async (c) => {
+    try {
+      const body = await readAll(c.env, c.get('users'), serverToday(c))
+      return c.body(body, 200, { 'Content-Type': 'application/json; charset=utf-8' })
+    } catch (e) {
+      if (e instanceof RestoreInProgressError) return c.json({ error: 'restore_in_progress' } satisfies ApiError, 503)
+      throw e
+    }
+  })
+
+  app.all('/api/*', (c) => c.json({ error: 'not_found' } satisfies ApiError, 404))
 
   // Static files of the app, served only once the token is checked.
   app.all('*', async (c) => {
@@ -25,7 +41,14 @@ export function createApp(options: AccessAuthOptions = {}) {
       fresh.headers.set('Cache-Control', 'no-cache')
       return fresh
     }
-    return res
+    return new Response(res.body, res)
+  })
+
+  // Logs hold fixed codes only: never an amount, a label or the content of a request (spec 4.8).
+  app.onError((e, c) => {
+    console.error(JSON.stringify({ event: 'error', method: c.req.method, route: c.req.routePath, kind: e?.constructor?.name }))
+    const body: ApiError = { error: 'server_error' }
+    return c.json(body, 500)
   })
 
   return app
