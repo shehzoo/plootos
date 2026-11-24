@@ -2,6 +2,7 @@
 // The operations are those of the fictitious export (same labels, same dates).
 
 import { normalizeBankLabel, firstLine } from '../src/engine/labels'
+import type { SeedInput } from './seed'
 import type {
   BudgetData,
   BudgetLineVersion,
@@ -29,8 +30,8 @@ export const SECTION = {
 
 export const CAT = {
   salaries: 10,
-  salaryShehzaad: 11,
-  salaryMary: 12,
+  salaryPerson1: 11,
+  salaryPerson2: 12,
   housing: 20,
   energy: 21,
   childcare: 22,
@@ -47,8 +48,8 @@ export const CAT = {
 } as const
 
 export const LINE = {
-  salaryShehzaad: 101,
-  salaryMary: 102,
+  salaryPerson1: 101,
+  salaryPerson2: 102,
   housing: 103,
   groceries: 104,
   cats: 105,
@@ -85,8 +86,8 @@ const cat = (id: Id, name: string, sectionId: Id | null, parentId: Id | null = n
 
 const categories: Category[] = [
   cat(CAT.salaries, 'Salaires', SECTION.regularIncome),
-  cat(CAT.salaryShehzaad, 'Shehzaad', null, CAT.salaries),
-  cat(CAT.salaryMary, 'Mary', null, CAT.salaries),
+  cat(CAT.salaryPerson1, 'Personne 1', null, CAT.salaries),
+  cat(CAT.salaryPerson2, 'Personne 2', null, CAT.salaries),
   cat(CAT.housing, 'Logement', SECTION.fixed),
   cat(CAT.energy, 'Énergie', SECTION.fixed),
   cat(CAT.childcare, 'Garde des enfants', SECTION.fixed),
@@ -105,8 +106,8 @@ const categories: Category[] = [
 const monthly = (anchorMonth: string): Rhythm => ({ kind: 'every_n', everyN: 1, anchorMonth })
 
 const lines: [Id, string, Id, number, string, Rhythm][] = [
-  [LINE.salaryShehzaad, 'Salaire Shehzaad', CAT.salaryShehzaad, 2800, '2027-03', monthly('2027-03')],
-  [LINE.salaryMary, 'Salaire Mary', CAT.salaryMary, 2200, '2027-03', monthly('2027-03')],
+  [LINE.salaryPerson1, 'Salaire personne 1', CAT.salaryPerson1, 2800, '2027-03', monthly('2027-03')],
+  [LINE.salaryPerson2, 'Salaire personne 2', CAT.salaryPerson2, 2200, '2027-03', monthly('2027-03')],
   [LINE.housing, 'Prêt immobilier', CAT.housing, 1200, '2027-03', monthly('2027-03')],
   [LINE.groceries, 'Courses', CAT.groceries, 800, '2027-03', monthly('2027-03')],
   [LINE.cats, 'Chats', CAT.cats, 40, '2027-03', monthly('2027-03')],
@@ -170,8 +171,8 @@ export function exportRows(): ImportRow[] {
 
 /** Categorization of the example, in chronological order of the export (spec 1.3). */
 const CATEGORIZATION: [number, Id][][] = [
-  [[2800, CAT.salaryShehzaad]],
-  [[2200, CAT.salaryMary]],
+  [[2800, CAT.salaryPerson1]],
+  [[2200, CAT.salaryPerson2]],
   [[-1200, CAT.housing]],
   [[-210, CAT.supermarket]],
   [[-95, CAT.butcher]],
@@ -235,4 +236,36 @@ export function exampleData(options: ExampleOptions = {}): BudgetData {
     parts,
     openingBalance: { balanceDate: '2027-02-28', amountCents: euros(3000) },
   })
+}
+
+/** Who categorized each operation (spec 1.3), ids 1 to 13: 0 is person 1, 1 is person 2. */
+const CATEGORIZED_BY: (0 | 1)[] = [0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1]
+
+/**
+ * The example month as a data set (spec 1.3), with its authors: person 1 sets up the budget
+ * and imports; each operation is categorized by the person of the spec; person 2 sets the
+ * Courses override. One balance check at the statement date: no gap.
+ */
+export function exampleSeedInput(): SeedInput {
+  const data = exampleData()
+  return {
+    data,
+    balanceChecks: [{ id: 1, checkDate: STATEMENT.date, bankBalanceCents: STATEMENT.balanceCents, gapCents: 0 }],
+    authorship: (table, id) => {
+      const setup = '2027-02-28T19:00:00.000Z'
+      if (table === 'operation' || table === 'operation_part') {
+        const opId = table === 'operation' ? id : (data.parts.find((p) => p.id === id)?.operationId ?? 1)
+        const op = data.operations.find((o) => o.id === opId)
+        const at = `${op?.opDate ?? '2027-03-01'}T20:00:00.000Z`
+        return { createdBy: 0, createdAt: at, updatedBy: CATEGORIZED_BY[opId - 1] ?? 0, updatedAt: at }
+      }
+      if (table === 'budget_override') {
+        return { createdBy: 1, createdAt: '2027-03-02T19:00:00.000Z', updatedBy: 1, updatedAt: '2027-03-02T19:00:00.000Z' }
+      }
+      if (table === 'balance_check') {
+        return { createdBy: 0, createdAt: '2027-04-02T20:00:00.000Z', updatedBy: 0, updatedAt: '2027-04-02T20:00:00.000Z' }
+      }
+      return { createdBy: 0, createdAt: setup, updatedBy: 0, updatedAt: setup }
+    },
+  }
 }

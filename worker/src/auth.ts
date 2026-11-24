@@ -76,6 +76,7 @@ export function accessAuth(options: AccessAuthOptions = {}): MiddlewareHandler<A
   return async (c, next) => {
     const users = parseAllowedUsers(c.env.ALLOWED_USERS)
     if (!users) return refuse(c, 500, 'misconfigured', 'allowed_users')
+    c.set('users', users)
 
     const token = c.req.header(ACCESS_JWT_HEADER)
 

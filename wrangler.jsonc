@@ -8,6 +8,10 @@
   // through their workers.dev address, behind Access (spec 4.7).
   "workers_dev": false,
   "preview_urls": false,
+  // Simulated date allowed in local development and staging only (worker/src/today.ts).
+  "vars": { "ENVIRONMENT": "local" },
+  // Workers Logs off: the Worker logs fixed codes only, never data (spec 4.8).
+  "observability": { "enabled": false },
   "assets": {
     "directory": "./dist/web",
     "binding": "ASSETS",
@@ -30,6 +34,8 @@
       "name": "app",
       "workers_dev": true,
       "preview_urls": false,
+      "vars": { "ENVIRONMENT": "staging" },
+      "observability": { "enabled": false },
       "d1_databases": [
         {
           "binding": "DB",
@@ -45,6 +51,8 @@
       "name": "app",
       "workers_dev": true,
       "preview_urls": false,
+      "vars": { "ENVIRONMENT": "production" },
+      "observability": { "enabled": false },
       "d1_databases": [
         {
           "binding": "DB",

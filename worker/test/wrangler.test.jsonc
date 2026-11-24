@@ -1,0 +1,9 @@
+// Tests only: an in-memory local D1 database, nothing else.
+{
+  "name": "plootos-test",
+  "main": "../src/index.ts",
+  "compatibility_date": "2026-11-24",
+  "d1_databases": [
+    { "binding": "DB", "database_name": "plootos-test", "database_id": "00000000-0000-0000-0000-000000000000" }
+  ]
+}

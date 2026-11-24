@@ -11,7 +11,7 @@ import {
   suggestionKey,
   todayInParis,
 } from '../src/engine'
-import { CAT, EXPORT, exampleData } from './fixtures'
+import { CAT, EXPORT, exampleData } from '../fixtures/example'
 
 describe('today and the current month, in Paris', () => {
   it.each([

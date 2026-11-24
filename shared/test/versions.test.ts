@@ -10,7 +10,7 @@ import {
   type LineChange,
   type NewVersion,
 } from '../src/engine'
-import { CAT, LINE, SECTION, euros, exampleData, versionId } from './fixtures'
+import { CAT, LINE, SECTION, euros, exampleData, versionId } from '../fixtures/example'
 
 const NOW = '2027-05-10T08:00:00Z'
 
