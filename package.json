@@ -6,7 +6,7 @@
     "build": "vite build",
     "dev": "vite build && wrangler dev",
     "test": "vitest run",
-    "typecheck": "tsc -p worker && tsc -p web",
+    "typecheck": "tsc -p worker && tsc -p web && tsc -p shared",
     "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
