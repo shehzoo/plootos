@@ -34,9 +34,12 @@ En local seulement, `DEV_AUTH_EMAIL` remplace Access ; le Worker l'ignore hors d
 | Environnement | Où | Données | Déployé |
 |---------------|----|---------|---------|
 | Local | `wrangler dev` | Base locale fictive | À la main |
-| Recette (`staging`) | Compte Cloudflare « Plootos Staging », `app.plootos-staging.workers.dev` derrière Access | Fictives | À chaque demande de fusion |
-| Production (`production`) | Compte Cloudflare « Plootos Prod », `app.plootos.workers.dev` derrière Access | Réelles | Après « Merge » sur `main` |
+| Recette (`staging`) | Compte Cloudflare « Plootos Staging », `app.plootos-staging.workers.dev` derrière Access | Fictives | À chaque demande de fusion, et après chaque « Merge » sur `main` |
+| Production (`production`) | Compte Cloudflare « Plootos Prod », `app.plootos.workers.dev` derrière Access | Réelles | Après « Merge » sur `main`, quand la variable `PRODUCTION_ENABLED` vaut `true` ; « Run workflow » la lance à la main |
 
 Secrets de chaque environnement GitHub (`staging`, `production`) :
 `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`,
 `ALLOWED_USERS` (`{"adresse": "Prénom"}`).
+
+Variable du dépôt : `PRODUCTION_ENABLED` (`true` une fois le compte « Plootos Prod » et ses
+secrets en place ; absente, un « Merge » ne déploie rien en production).
