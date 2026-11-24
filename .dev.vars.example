@@ -1,0 +1,3 @@
+# Copy to .dev.vars for `npm run dev`. Fictitious values only.
+DEV_AUTH_EMAIL="alice@example.test"
+ALLOWED_USERS={"alice@example.test":"Alice","bob@example.test":"Bob"}

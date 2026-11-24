@@ -1,0 +1,136 @@
+/* Minimal shell. The visual identity comes in lot 4 (direction artistique). */
+
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #666666;
+  --line: #e3e3e3;
+  --accent: #1f4e5f;
+  --nav-bg: #f5f6f7;
+  font-family: system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15181a;
+    --fg: #eeeeee;
+    --muted: #a0a0a0;
+    --line: #2c3134;
+    --accent: #8cc6d9;
+    --nav-bg: #1d2124;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 13rem;
+  padding: 1rem 0.75rem;
+  background: var(--nav-bg);
+  border-right: 1px solid var(--line);
+}
+
+.sidebar a,
+.bottombar a {
+  color: var(--fg);
+  text-decoration: none;
+  border-radius: 0.5rem;
+}
+
+.sidebar a {
+  padding: 0.6rem 0.75rem;
+}
+
+.sidebar a[aria-current='page'],
+.bottombar a[aria-current='page'] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sidebar a[aria-current='page'] {
+  background: var(--bg);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: 1rem 1.5rem;
+}
+
+.topbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.who,
+.placeholder {
+  color: var(--muted);
+}
+
+.bottombar {
+  display: none;
+}
+
+.message {
+  max-width: 28rem;
+  margin: 20vh auto 0;
+  padding: 0 1.5rem;
+  text-align: center;
+}
+
+.message button {
+  font: inherit;
+  padding: 0.5rem 1rem;
+}
+
+/* Phone layout: narrow display, whatever the device (spec 4.2).
+   Threshold 760px, taken from the validated mock-ups; checked on both phones in lot 1. */
+@media (max-width: 760px) {
+  .sidebar {
+    display: none;
+  }
+
+  .content {
+    padding: 1rem 1rem calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  .bottombar {
+    position: fixed;
+    inset: auto 0 0 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--nav-bg);
+    border-top: 1px solid var(--line);
+  }
+
+  .bottombar a {
+    padding: 0.9rem 0.25rem;
+    text-align: center;
+    font-size: 0.85rem;
+  }
+}

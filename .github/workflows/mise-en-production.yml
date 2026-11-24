@@ -1,0 +1,104 @@
+# After "Merge" on main: tests, staging redeployed from main, then production (spec 4.8):
+# restore bookmark, schema changes, deployment.
+# Production runs only when the repository variable PRODUCTION_ENABLED is 'true', set once the
+# "Plootos Prod" account and its secrets exist; until then a "Merge" deploys nothing to production.
+# "Run workflow" launches the same steps by hand, on main only (first deployment to production).
+# The production token lives in the "production" environment, usable from main only.
+name: Mise en production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  staging:
+    name: Déploiement en recette
+    needs: tests
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: staging
+    concurrency:
+      group: staging
+      cancel-in-progress: true
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Changements de schéma
+        run: npx wrangler d1 migrations apply DB --env staging --remote
+      - name: Déploiement
+        env:
+          ACCESS_TEAM_DOMAIN: ${{ secrets.ACCESS_TEAM_DOMAIN }}
+          ACCESS_AUD: ${{ secrets.ACCESS_AUD }}
+          ALLOWED_USERS: ${{ secrets.ALLOWED_USERS }}
+        run: |
+          node scripts/write-secrets.mjs "$RUNNER_TEMP/secrets.json"
+          npx wrangler deploy --env staging --secrets-file "$RUNNER_TEMP/secrets.json"
+          rm -f "$RUNNER_TEMP/secrets.json"
+
+  production:
+    name: Mise en production
+    needs: tests
+    if: vars.PRODUCTION_ENABLED == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # Point to restore to with "Restaurer à une date" if this version goes wrong.
+      - name: Marque-page de restauration
+        run: npx wrangler d1 time-travel info DB --env production
+      - name: Changements de schéma
+        run: npx wrangler d1 migrations apply DB --env production --remote
+      - name: Déploiement
+        env:
+          ACCESS_TEAM_DOMAIN: ${{ secrets.ACCESS_TEAM_DOMAIN }}
+          ACCESS_AUD: ${{ secrets.ACCESS_AUD }}
+          ALLOWED_USERS: ${{ secrets.ALLOWED_USERS }}
+        run: |
+          node scripts/write-secrets.mjs "$RUNNER_TEMP/secrets.json"
+          npx wrangler deploy --env production --secrets-file "$RUNNER_TEMP/secrets.json"
+          rm -f "$RUNNER_TEMP/secrets.json"
