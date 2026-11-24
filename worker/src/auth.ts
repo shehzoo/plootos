@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from 'hono'
-import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose'
+import { createRemoteJWKSet, decodeJwt, jwtVerify, type JWTVerifyGetKey } from 'jose'
 import type { AppEnv, User } from './types'
 
 // Access puts the signed token in this header on every request it lets through.
@@ -109,7 +109,15 @@ export function accessAuth(options: AccessAuthOptions = {}): MiddlewareHandler<A
       }
       email = payload.email.trim().toLowerCase()
     } catch (e) {
-      return refuse(c, 401, 'unauthenticated', tokenErrorReason(e))
+      let reason = tokenErrorReason(e)
+      // TEMPORARY diagnostic (lot 1 setup): audience tags are not secret (they appear
+      // in Access login URLs). Remove once staging works.
+      if (reason === 'claim_aud') {
+        const got = decodeJwt(token).aud
+        const list = (Array.isArray(got) ? got : [got]).map((a) => String(a).slice(0, 8))
+        reason = `claim_aud expected=${audience.slice(0, 8)}(${audience.length}) got=${list.join(',')}`
+      }
+      return refuse(c, 401, 'unauthenticated', reason)
     }
 
     const firstName = users.get(email)
