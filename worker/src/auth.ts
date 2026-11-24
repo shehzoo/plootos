@@ -34,14 +34,32 @@ export function parseAllowedUsers(raw: string | undefined): Map<string, string> 
   }
 }
 
-function refuse(c: Parameters<MiddlewareHandler<AppEnv>>[0], status: 401 | 403 | 500, code: string) {
-  // No detail on why: nothing useful for someone who got past Access by mistake.
+function refuse(
+  c: Parameters<MiddlewareHandler<AppEnv>>[0],
+  status: 401 | 403 | 500,
+  code: string,
+  reason: string,
+) {
+  // The reason is a fixed code (never a value from the token or the settings):
+  // enough to diagnose a misconfiguration, nothing useful to an attacker.
   if (c.req.path.startsWith('/api/')) {
-    return c.json({ error: code }, status, { 'Cache-Control': 'no-store' })
+    return c.json({ error: code, reason }, status, { 'Cache-Control': 'no-store' })
   }
   return c.text(status === 500 ? 'Configuration incomplète.' : 'Accès refusé.', status, {
     'Cache-Control': 'no-store',
   })
+}
+
+/** Fixed reason code from a jose error: the failed claim name, or the error code. */
+export function tokenErrorReason(e: unknown): string {
+  if (e && typeof e === 'object') {
+    const err = e as { code?: unknown; claim?: unknown }
+    if (err.code === 'ERR_JWT_CLAIM_VALIDATION_FAILED' && typeof err.claim === 'string') {
+      return `claim_${err.claim.replace(/[^a-z_]/gi, '').slice(0, 20)}`
+    }
+    if (typeof err.code === 'string') return err.code.replace(/[^A-Z_]/g, '').slice(0, 40).toLowerCase()
+  }
+  return 'invalid_token'
 }
 
 export interface AccessAuthOptions {
@@ -57,7 +75,7 @@ export interface AccessAuthOptions {
 export function accessAuth(options: AccessAuthOptions = {}): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
     const users = parseAllowedUsers(c.env.ALLOWED_USERS)
-    if (!users) return refuse(c, 500, 'misconfigured')
+    if (!users) return refuse(c, 500, 'misconfigured', 'allowed_users')
 
     const token = c.req.header(ACCESS_JWT_HEADER)
 
@@ -68,16 +86,16 @@ export function accessAuth(options: AccessAuthOptions = {}): MiddlewareHandler<A
       const host = new URL(c.req.url).hostname
       if (devEmail && LOCAL_HOSTS.has(host)) {
         const firstName = users.get(devEmail)
-        if (!firstName) return refuse(c, 403, 'forbidden')
+        if (!firstName) return refuse(c, 403, 'forbidden', 'email_not_allowed')
         c.set('user', { email: devEmail, firstName } satisfies User)
         return next()
       }
-      return refuse(c, 401, 'unauthenticated')
+      return refuse(c, 401, 'unauthenticated', 'no_token')
     }
 
     const teamDomain = c.env.ACCESS_TEAM_DOMAIN
     const audience = c.env.ACCESS_AUD
-    if (!teamDomain || !audience) return refuse(c, 500, 'misconfigured')
+    if (!teamDomain || !audience) return refuse(c, 500, 'misconfigured', 'access_settings')
 
     let email: string
     try {
@@ -87,15 +105,15 @@ export function accessAuth(options: AccessAuthOptions = {}): MiddlewareHandler<A
         algorithms: ['RS256'],
       })
       if (typeof payload.email !== 'string' || !payload.email) {
-        return refuse(c, 403, 'forbidden')
+        return refuse(c, 403, 'forbidden', 'no_email_claim')
       }
       email = payload.email.trim().toLowerCase()
-    } catch {
-      return refuse(c, 401, 'unauthenticated')
+    } catch (e) {
+      return refuse(c, 401, 'unauthenticated', tokenErrorReason(e))
     }
 
     const firstName = users.get(email)
-    if (!firstName) return refuse(c, 403, 'forbidden')
+    if (!firstName) return refuse(c, 403, 'forbidden', 'email_not_allowed')
 
     c.set('user', { email, firstName } satisfies User)
     return next()

@@ -74,6 +74,7 @@ describe('Access token check (spec 4.7)', () => {
   it('refuses another address', async () => {
     const res = await me({ [ACCESS_JWT_HEADER]: await token({ email: 'eve@example.test' }) })
     expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: 'forbidden', reason: 'email_not_allowed' })
   })
 
   it('refuses a token without an address', async () => {
@@ -82,25 +83,35 @@ describe('Access token check (spec 4.7)', () => {
   })
 
   it('refuses a request without a token', async () => {
-    expect((await me({})).status).toBe(401)
+    const res = await me({})
+    expect(res.status).toBe(401)
+    expect(await res.json()).toEqual({ error: 'unauthenticated', reason: 'no_token' })
   })
 
   it('refuses a wrong audience', async () => {
-    expect((await me({ [ACCESS_JWT_HEADER]: await token({ aud: 'other-app' }) })).status).toBe(401)
+    const res = await me({ [ACCESS_JWT_HEADER]: await token({ aud: 'other-app' }) })
+    expect(res.status).toBe(401)
+    expect(await res.json()).toEqual({ error: 'unauthenticated', reason: 'claim_aud' })
   })
 
   it('refuses a wrong issuer', async () => {
     const iss = 'https://other-team.cloudflareaccess.com'
-    expect((await me({ [ACCESS_JWT_HEADER]: await token({ iss }) })).status).toBe(401)
+    const res = await me({ [ACCESS_JWT_HEADER]: await token({ iss }) })
+    expect(res.status).toBe(401)
+    expect(await res.json()).toEqual({ error: 'unauthenticated', reason: 'claim_iss' })
   })
 
   it('refuses an expired token', async () => {
     const exp = Math.floor(Date.now() / 1000) - 60
-    expect((await me({ [ACCESS_JWT_HEADER]: await token({ exp }) })).status).toBe(401)
+    const res = await me({ [ACCESS_JWT_HEADER]: await token({ exp }) })
+    expect(res.status).toBe(401)
+    expect(await res.json()).toEqual({ error: 'unauthenticated', reason: 'err_jwt_expired' })
   })
 
   it('refuses a token signed with another key', async () => {
-    expect((await me({ [ACCESS_JWT_HEADER]: await token({ key: otherKey }) })).status).toBe(401)
+    const res = await me({ [ACCESS_JWT_HEADER]: await token({ key: otherKey }) })
+    expect(res.status).toBe(401)
+    expect(await res.json()).toEqual({ error: 'unauthenticated', reason: 'err_jws_signature_verification_failed' })
   })
 
   it('refuses a malformed token', async () => {
@@ -175,5 +186,11 @@ describe('Unknown API routes', () => {
     )
     expect(res.status).toBe(404)
     expect(await res.json()).toEqual({ error: 'not_found' })
+  })
+
+  it('never echoes a token value in the reason', async () => {
+    const res = await me({ [ACCESS_JWT_HEADER]: 'not-a-token' })
+    const body = (await res.json()) as { reason: string }
+    expect(body.reason).toMatch(/^[a-z_]+$/)
   })
 })
