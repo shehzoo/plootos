@@ -1,0 +1,238 @@
+// Example month of the spec (1.3), March 2027. All amounts are fictitious.
+// The operations are those of the fictitious export (same labels, same dates).
+
+import { normalizeBankLabel, firstLine } from '../src/engine/labels'
+import type {
+  BudgetData,
+  BudgetLineVersion,
+  BudgetOverride,
+  Category,
+  Id,
+  ImportRow,
+  IsoDate,
+  Operation,
+  OperationPart,
+  Rhythm,
+  Section,
+} from '../src/engine'
+
+export const euros = (amount: number) => Math.round(amount * 100)
+
+export const SECTION = {
+  regularIncome: 1,
+  oneOffIncome: 2,
+  fixed: 3,
+  everyday: 4,
+  oneOffExpenses: 5,
+  savings: 6,
+} as const
+
+export const CAT = {
+  salaries: 10,
+  salaryShehzaad: 11,
+  salaryMary: 12,
+  housing: 20,
+  energy: 21,
+  childcare: 22,
+  insurance: 23,
+  insuranceCar: 24,
+  insuranceHome: 25,
+  groceries: 30,
+  supermarket: 31,
+  butcher: 32,
+  cats: 33,
+  health: 34,
+  pharmacy: 35,
+  savingsAccount: 40,
+} as const
+
+export const LINE = {
+  salaryShehzaad: 101,
+  salaryMary: 102,
+  housing: 103,
+  groceries: 104,
+  cats: 105,
+  energy: 106,
+  childcare: 107,
+  insuranceCar: 108,
+  insuranceHome: 109,
+  savingsAccount: 110,
+} as const
+
+const sections: Section[] = [
+  [SECTION.regularIncome, 'Revenus réguliers', 'in'],
+  [SECTION.oneOffIncome, 'Revenus ponctuels', 'in'],
+  [SECTION.fixed, 'Dépenses fixes', 'out'],
+  [SECTION.everyday, 'Dépenses courantes', 'out'],
+  [SECTION.oneOffExpenses, 'Dépenses ponctuelles', 'out'],
+  [SECTION.savings, 'Épargne', 'out'],
+].map(([id, name, direction], i) => ({
+  id: id as number,
+  name: name as string,
+  direction: direction as 'in' | 'out',
+  sortOrder: i,
+  archivedAt: null,
+}))
+
+const cat = (id: Id, name: string, sectionId: Id | null, parentId: Id | null = null): Category => ({
+  id,
+  name,
+  parentId,
+  sectionId: parentId === null ? sectionId : null,
+  sortOrder: id,
+  archivedAt: null,
+})
+
+const categories: Category[] = [
+  cat(CAT.salaries, 'Salaires', SECTION.regularIncome),
+  cat(CAT.salaryShehzaad, 'Shehzaad', null, CAT.salaries),
+  cat(CAT.salaryMary, 'Mary', null, CAT.salaries),
+  cat(CAT.housing, 'Logement', SECTION.fixed),
+  cat(CAT.energy, 'Énergie', SECTION.fixed),
+  cat(CAT.childcare, 'Garde des enfants', SECTION.fixed),
+  cat(CAT.insurance, 'Assurance', SECTION.fixed),
+  cat(CAT.insuranceCar, 'Auto', null, CAT.insurance),
+  cat(CAT.insuranceHome, 'Maison', null, CAT.insurance),
+  cat(CAT.groceries, 'Courses', SECTION.everyday),
+  cat(CAT.supermarket, 'Supermarché', null, CAT.groceries),
+  cat(CAT.butcher, 'Boucherie', null, CAT.groceries),
+  cat(CAT.cats, 'Chats', null, CAT.groceries),
+  cat(CAT.health, 'Santé', SECTION.everyday),
+  cat(CAT.pharmacy, 'Pharmacie', null, CAT.health),
+  cat(CAT.savingsAccount, 'Livret A', SECTION.savings),
+]
+
+const monthly = (anchorMonth: string): Rhythm => ({ kind: 'every_n', everyN: 1, anchorMonth })
+
+const lines: [Id, string, Id, number, string, Rhythm][] = [
+  [LINE.salaryShehzaad, 'Salaire Shehzaad', CAT.salaryShehzaad, 2800, '2027-03', monthly('2027-03')],
+  [LINE.salaryMary, 'Salaire Mary', CAT.salaryMary, 2200, '2027-03', monthly('2027-03')],
+  [LINE.housing, 'Prêt immobilier', CAT.housing, 1200, '2027-03', monthly('2027-03')],
+  [LINE.groceries, 'Courses', CAT.groceries, 800, '2027-03', monthly('2027-03')],
+  [LINE.cats, 'Chats', CAT.cats, 40, '2027-03', monthly('2027-03')],
+  [LINE.energy, 'Énergie', CAT.energy, 150, '2027-03', monthly('2027-03')],
+  [LINE.childcare, 'Crèche', CAT.childcare, 400, '2026-09', { kind: 'months', months: [1, 2, 3, 4, 5, 6, 9, 10, 11, 12] }],
+  [LINE.insuranceCar, 'Assurance auto', CAT.insuranceCar, 240, '2027-01', { kind: 'every_n', everyN: 3, anchorMonth: '2027-01' }],
+  [LINE.insuranceHome, 'Assurance habitation', CAT.insuranceHome, 360, '2027-03', { kind: 'every_n', everyN: 12, anchorMonth: '2027-03' }],
+  [LINE.savingsAccount, 'Virement livret A', CAT.savingsAccount, 300, '2027-03', monthly('2027-03')],
+]
+
+/** Version id of a line in the example: line id + 100. */
+export const versionId = (lineId: Id) => lineId + 100
+
+const versions: BudgetLineVersion[] = lines.map(([lineId, , categoryId, amount, startMonth, rhythm]) => ({
+  id: versionId(lineId),
+  budgetLineId: lineId,
+  categoryId,
+  amountCents: euros(amount),
+  startMonth,
+  endMonth: null,
+  replacedAt: null,
+  rhythm,
+}))
+
+const overrides: BudgetOverride[] = [
+  { id: 301, budgetLineId: LINE.groceries, month: '2027-03', amountCents: euros(950), reason: 'Anniversaire', removedAt: null },
+]
+
+/** The fictitious export, as read: date, value date, label, debit, credit (most recent first). */
+export const EXPORT: [string, string, string, number | null, number | null][] = [
+  ['31/03/2027', '01/04/2027', 'PAIEMENT PAR CARTE - X0000 SUPERMARCHE EXEMPLE 31/03 - VILLE EXEMPLE', 230, null],
+  ['29/03/2027', '29/03/2027', 'VIREMENT EN VOTRE FAVEUR - CPAM EXEMPLE REMBOURSEMENT\nREF000000000000', null, 20],
+  ['28/03/2027', '28/03/2027', 'PAIEMENT PAR CARTE - X0000 PHARMACIE EXEMPLE 28/03 - VILLE EXEMPLE', 35, null],
+  ['25/03/2027', '25/03/2027', 'VIREMENT EMIS - VERS LIVRET A EXEMPLE\nREF000000000000', 300, null],
+  ['22/03/2027', '22/03/2027', 'PRELEVEMENT - ASSUREUR EXEMPLE - ASSURANCE HABITATION\n000000AAA00000000A000000000\nFR00ZZZ000000\nRUM-EXEMPLE0000000000', 372, null],
+  ['20/03/2027', '20/03/2027', 'PAIEMENT PAR CARTE - X0000 SUPERMARCHE EXEMPLE 19/03 - VILLE EXEMPLE', 260, null],
+  ['15/03/2027', '15/03/2027', 'VIREMENT EMIS - CRECHE EXEMPLE MARS\nREF000000000000', 400, null],
+  ['15/03/2027', '15/03/2027', 'PRELEVEMENT - ENERGIE EXEMPLE - FACTURE MENSUELLE\n000000AAA00000000A000000000\nFR00ZZZ000000', 150, null],
+  ['12/03/2027', '12/03/2027', 'PAIEMENT PAR CARTE - X0000 BOUCHERIE EXEMPLE 11/03 - VILLE EXEMPLE', 95, null],
+  ['06/03/2027', '06/03/2027', 'PAIEMENT PAR CARTE - X0000 SUPERMARCHE EXEMPLE 05/03 - VILLE EXEMPLE', 210, null],
+  ['05/03/2027', '05/03/2027', 'PRELEVEMENT - BANQUE EXEMPLE - ECHEANCE PRET\n000000AAA00000000A000000000\nFR00ZZZ000000', 1200, null],
+  ['01/03/2027', '01/03/2027', 'VIREMENT EN VOTRE FAVEUR - EMPLOYEUR B EXEMPLE SALAIRE\nREF000000000000', null, 2200],
+  ['01/03/2027', '01/03/2027', 'VIREMENT EN VOTRE FAVEUR - EMPLOYEUR A EXEMPLE SALAIRE\nREF000000000000', null, 2800],
+]
+
+/** Statement balance of the fictitious export. */
+export const STATEMENT = { date: '2027-04-02', balanceCents: euros(4768) }
+
+const iso = (d: string) => `${d.slice(6, 10)}-${d.slice(3, 5)}-${d.slice(0, 2)}`
+
+/** Rows of the fictitious export, as the browser sends them (spec 4.4, step 2). */
+export function exportRows(): ImportRow[] {
+  return EXPORT.map(([date, valueDate, label, debit, credit]) => ({
+    opDate: iso(date),
+    valueDate: iso(valueDate),
+    amountCents: euros((credit ?? 0) - (debit ?? 0)),
+    bankLabel: normalizeBankLabel(label),
+    bankLabelRaw: firstLine(label),
+  }))
+}
+
+/** Categorization of the example, in chronological order of the export (spec 1.3). */
+const CATEGORIZATION: [number, Id][][] = [
+  [[2800, CAT.salaryShehzaad]],
+  [[2200, CAT.salaryMary]],
+  [[-1200, CAT.housing]],
+  [[-210, CAT.supermarket]],
+  [[-95, CAT.butcher]],
+  [[-150, CAT.energy]],
+  [[-400, CAT.childcare]],
+  [[-215, CAT.supermarket], [-45, CAT.cats]],
+  [[-372, CAT.insuranceHome]],
+  [[-300, CAT.savingsAccount]],
+  [[-35, CAT.pharmacy]],
+  [[20, CAT.pharmacy]],
+  [[-230, CAT.supermarket]],
+]
+
+/** Imported and categorized operations of the example, ids 1 to 13 by value date. */
+function exampleOperations(): { operations: Operation[]; parts: OperationPart[] } {
+  const rows = exportRows().reverse()
+  const operations: Operation[] = []
+  const parts: OperationPart[] = []
+  rows.forEach((row, i) => {
+    const id = i + 1
+    operations.push({
+      id,
+      ...row,
+      origin: 'import',
+      dupRank: 1,
+      comment: null,
+      archivedAt: null,
+    })
+    for (const [amount, categoryId] of CATEGORIZATION[i] ?? []) {
+      parts.push({ id: id * 10 + parts.filter((p) => p.operationId === id).length, operationId: id, categoryId, amountCents: euros(amount) })
+    }
+  })
+  return { operations, parts }
+}
+
+export interface ExampleOptions {
+  /** Keep only the operations valued on or before this date (what is entered at that point). */
+  enteredUpTo?: IsoDate
+  /** Leave the operations out. */
+  withoutOperations?: boolean
+}
+
+export function exampleData(options: ExampleOptions = {}): BudgetData {
+  let { operations, parts } = exampleOperations()
+  if (options.withoutOperations) {
+    operations = []
+    parts = []
+  } else if (options.enteredUpTo) {
+    const upTo = options.enteredUpTo
+    operations = operations.filter((o) => o.valueDate <= upTo)
+    const ids = new Set(operations.map((o) => o.id))
+    parts = parts.filter((p) => ids.has(p.operationId))
+  }
+  return structuredClone({
+    sections,
+    categories,
+    budgetLines: lines.map(([id, label]) => ({ id, label })),
+    versions,
+    overrides,
+    operations,
+    parts,
+    openingBalance: { balanceDate: '2027-02-28', amountCents: euros(3000) },
+  })
+}

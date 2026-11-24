@@ -11,7 +11,7 @@ des environnements GitHub, les données dans la base.
 
 | Dossier | Contenu |
 |---------|---------|
-| `shared/` | Code partagé entre le navigateur et le Worker |
+| `shared/` | Code partagé entre le navigateur et le Worker : moteur de calcul (`shared/src/engine`), testé sur les cas de la spec |
 | `worker/` | Code serveur (Hono) : vérifie le jeton d'Access, contrôle les écritures |
 | `web/` | Appli dans le navigateur (Preact, Vite) |
 | `migrations/` | Changements de schéma de la base, versionnés |

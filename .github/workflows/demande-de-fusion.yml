@@ -1,10 +1,11 @@
-# Each pull request: tests, then deployment to staging, "recette" (separate
-# Cloudflare account, fictitious data only). Nothing here can reach production.
+# Each pull request to main, or to the branch of a lot still waiting for its "Merge": tests,
+# then deployment to staging, "recette" (separate Cloudflare account, fictitious data only).
+# Nothing here can reach production.
 name: Demande de fusion
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'lot-*']
 
 permissions:
   contents: read
