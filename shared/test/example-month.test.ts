@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { Ledger } from '../src/engine'
-import { CAT, SECTION, euros, exampleData } from './fixtures'
+import { CAT, SECTION, euros, exampleData } from '../fixtures/example'
 
 const MARCH = '2027-03'
 
@@ -139,13 +139,13 @@ describe('current month on 31/03, every March operation entered (C10)', () => {
 
   it('shows money received beyond the plan for an income section', () => {
     const data = exampleData({ enteredUpTo: '2027-03-31' })
-    const salary = data.parts.find((p) => p.categoryId === CAT.salaryMary)
+    const salary = data.parts.find((p) => p.categoryId === CAT.salaryPerson2)
     if (!salary) throw new Error('fixture')
     data.operations.push({
       id: 99, opDate: '2027-03-30', valueDate: '2027-03-30', amountCents: euros(100), origin: 'manual',
       bankLabel: null, bankLabelRaw: null, dupRank: null, comment: null, archivedAt: null,
     })
-    data.parts.push({ id: 990, operationId: 99, categoryId: CAT.salaryMary, amountCents: euros(100) })
+    data.parts.push({ id: 990, operationId: 99, categoryId: CAT.salaryPerson2, amountCents: euros(100) })
     expect(new Ledger(data).sectionRemaining(SECTION.regularIncome, MARCH)).toMatchObject({
       remainingCents: 0,
       overrunCount: 0,

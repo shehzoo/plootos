@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import type { MeResponse } from '../../shared/src/api'
-import { apiGet, ForbiddenError, OfflineError, SessionExpiredError } from './api'
+import { apiGet, AppOutdatedError, ForbiddenError, OfflineError, SessionExpiredError } from './api'
+import { loadData, type Loaded } from './data'
 import { navigate, SECTIONS, useSection, type Section } from './router'
 
 type Load =
   | { state: 'loading' }
-  | { state: 'ready'; me: MeResponse }
+  | { state: 'ready'; me: MeResponse; data: Loaded }
   | { state: 'offline' }
   | { state: 'forbidden' }
   | { state: 'expired' }
@@ -38,6 +39,25 @@ function Nav({ current, variant }: { current: Section; variant: 'sidebar' | 'bot
   )
 }
 
+const ms = (v: number) => `${Math.round(v)} ms`
+const frenchDate = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
+
+/**
+ * Local development and staging only: what was loaded and how long it took (lot 3 criterion,
+ * under 2 s on a phone with three years of data), and the server's "today".
+ */
+function Diagnostics({ data }: { data: Loaded }) {
+  if (data.environment === 'production') return null
+  const t = data.timings
+  return (
+    <p class="diagnostics">
+      {data.app.operations.length} opérations, {(data.bytes / 1e6).toFixed(1)} Mo · chargé en {ms(t.totalMs)} (réseau{' '}
+      {ms(t.networkMs)}, lecture {ms(t.readMs)}, calcul {ms(t.computeMs)}) · aujourd'hui : {frenchDate(data.today)}
+      {data.todaySimulated ? ' (date simulée)' : ''} · {data.environment === 'staging' ? 'recette' : 'local'}
+    </p>
+  )
+}
+
 function Message({ title, text, retry }: { title: string; text: string; retry?: () => void }) {
   return (
     <main class="message">
@@ -61,11 +81,13 @@ export function App() {
   const fetchMe = useCallback(async () => {
     setLoad({ state: 'loading' })
     try {
-      setLoad({ state: 'ready', me: await apiGet<MeResponse>('/api/me') })
+      const [me, data] = await Promise.all([apiGet<MeResponse>('/api/me'), loadData()])
+      setLoad({ state: 'ready', me, data })
     } catch (e) {
       if (e instanceof OfflineError) setLoad({ state: 'offline' })
       else if (e instanceof ForbiddenError) setLoad({ state: 'forbidden' })
       else if (e instanceof SessionExpiredError) setLoad({ state: 'expired' })
+      else if (e instanceof AppOutdatedError) setLoad({ state: 'loading' })
       else setLoad({ state: 'error' })
     }
   }, [])
@@ -94,7 +116,10 @@ export function App() {
           <span class="who">Bonjour {load.me.firstName}</span>
         </header>
         <main>
-          <p class="placeholder">{PLACEHOLDER[section]}</p>
+          <p class="placeholder">
+            {load.data.ledger ? PLACEHOLDER[section] : 'Base vide : la mise en service arrive au lot 7.'}
+          </p>
+          <Diagnostics data={load.data} />
         </main>
       </div>
       <Nav current={section} variant="bottombar" />

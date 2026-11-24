@@ -134,3 +134,10 @@ body {
     font-size: 0.85rem;
   }
 }
+
+/* Local development and staging only (lot 3 measures). */
+.diagnostics {
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}

@@ -1,5 +1,6 @@
 import { exportJWK, generateKeyPair, SignJWT, createLocalJWKSet, type CryptoKey } from 'jose'
 import { beforeAll, describe, expect, it } from 'vitest'
+import { API_VERSION, API_VERSION_HEADER } from '../../shared/src/api'
 import { createApp } from '../src/app'
 import { ACCESS_JWT_HEADER, parseAllowedUsers } from '../src/auth'
 import type { Bindings } from '../src/types'
@@ -54,7 +55,7 @@ async function token(o: TokenOptions = {}) {
 }
 
 async function me(headers: Record<string, string>, e = env(), url = 'https://budget.example.test/api/me') {
-  return app.request(url, { headers }, e)
+  return app.request(url, { headers: { [API_VERSION_HEADER]: String(API_VERSION), ...headers } }, e)
 }
 
 describe('Access token check (spec 4.7)', () => {
@@ -181,7 +182,7 @@ describe('Unknown API routes', () => {
   it('answer 404 in JSON', async () => {
     const res = await app.request(
       'https://budget.example.test/api/nothing',
-      { headers: { [ACCESS_JWT_HEADER]: await token() } },
+      { headers: { [ACCESS_JWT_HEADER]: await token(), [API_VERSION_HEADER]: String(API_VERSION) } },
       env(),
     )
     expect(res.status).toBe(404)

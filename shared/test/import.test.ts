@@ -11,7 +11,7 @@ import {
   type MergePair,
   type Operation,
 } from '../src/engine'
-import { CAT, STATEMENT, euros, exampleData, exportRows } from './fixtures'
+import { CAT, STATEMENT, euros, exampleData, exportRows } from '../fixtures/example'
 
 const manual = (id: number, valueDate: string, amount: number, archivedAt: string | null = null): Operation => ({
   id,
