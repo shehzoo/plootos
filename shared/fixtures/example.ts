@@ -249,11 +249,14 @@ const CHECK_MARCH_12 = { id: 1, checkDate: '2027-03-12', bankBalanceCents: euros
  * and imports; each operation is categorized by the person of the spec; person 2 sets the
  * Courses override. Whole month: one balance check at the statement date, no gap. Entered up
  * to a date (data set "exemple-15-03"): the operations valued up to that date, and one check
- * on 12/03, no gap.
+ * on 12/03, no gap. Without operations (data set "exemple-sans-operations"): categories, lines,
+ * override and opening balance only, no balance check, to enter the operations by hand (lot 9).
  */
-export function exampleSeedInput(options: Pick<ExampleOptions, 'enteredUpTo'> = {}): SeedInput {
+export function exampleSeedInput(options: ExampleOptions = {}): SeedInput {
   const data = exampleData(options)
-  const balanceChecks = options.enteredUpTo
+  const balanceChecks = options.withoutOperations
+    ? []
+    : options.enteredUpTo
     ? [CHECK_MARCH_12].filter((c) => c.checkDate <= (options.enteredUpTo as IsoDate))
     : [{ id: 1, checkDate: STATEMENT.date, bankBalanceCents: STATEMENT.balanceCents, gapCents: 0 }]
   return {

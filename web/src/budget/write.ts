@@ -9,6 +9,8 @@ import { ruleText } from './catalog'
 export interface Message {
   kind: 'conflict' | 'error'
   text: string
+  /** A conflict: the elements the other person changed (Catégoriser marks their rows). */
+  changed?: { table: string; id: number }[]
 }
 
 export function messageOf(e: unknown): Message {
@@ -16,6 +18,7 @@ export function messageOf(e: unknown): Message {
     return {
       kind: 'conflict',
       text: "Modifié entre-temps : les données ont été rechargées. Vérifie, puis recommence si c'est toujours utile.",
+      changed: e.changed,
     }
   }
   if (e instanceof RuleError) return { kind: 'error', text: ruleText(e.code) }
@@ -36,7 +39,8 @@ export function useWriter(refresh: () => Promise<void>) {
       try {
         await write()
       } catch (e) {
-        if (e instanceof ConflictError) await refresh().catch(() => undefined)
+        // A conflict, or a rule broken by what the other person did meanwhile: show the data as it is now.
+        if (e instanceof ConflictError || e instanceof RuleError) await refresh().catch(() => undefined)
         setMessage(messageOf(e))
         setBusy(false)
         return false

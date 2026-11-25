@@ -1,13 +1,16 @@
 // Screen 3.2, operations: the list of a month and the record of an operation, on a computer and
-// on a phone, read only (lot 6). Import, manual entry, balance check, categorizing and splitting
-// arrive in later lots and stay hidden until then (DECISIONS.md, 2026-11-25).
+// on a phone (lot 6). Lot 9: « + Ajout manuel » (a + button on a phone), the record can be
+// changed on a computer, « Catégoriser » opens screen 3.3. Import and balance check arrive in
+// lot 10 and stay hidden until then (DECISIONS.md, 2026-11-25).
 
 import { useState } from 'preact/hooks'
 import { addMonths, type Id, type Month } from '../../../shared/src/engine'
 import { count, eurosOrMinus, fullDate, monthTitle, shortDate, signedEuros } from '../format'
 import { Icon } from '../icons'
 import { checkText, type MonthContext } from '../month/view'
-import { back, navigate, operationsPath, type Place } from '../router'
+import { addingPath, back, CATEGORIZE_PATH, navigate, operationsPath, type Place } from '../router'
+import { todoCount } from './entry'
+import { RecordEditor } from './RecordEditor'
 import {
   clampOperationsMonth,
   operationDetail,
@@ -40,7 +43,13 @@ function opener(open: () => void) {
 }
 
 function CategoryText({ row }: { row: OperationRow }) {
-  return row.uncategorized ? <span class="pl-pill pl-pill--warn">À catégoriser</span> : <span>{row.categoryText}</span>
+  return row.uncategorized ? (
+    <span>
+      <span class="pl-pill pl-pill--warn">À catégoriser</span>
+    </span>
+  ) : (
+    <span>{row.categoryText}</span>
+  )
 }
 
 function LabelText({ row }: { row: OperationRow }) {
@@ -193,7 +202,16 @@ function PhoneList({ rows, open }: { rows: OperationRow[]; open: (id: Id) => voi
   )
 }
 
-export function OperationsScreen({ ctx, place, narrow }: { ctx: MonthContext; place: Place; narrow: boolean }) {
+/** « + Ajout manuel » on a phone: the floating + button (spec 3.0). */
+export function AddButton() {
+  return (
+    <button type="button" class="pl-fab fab" aria-label="Ajout manuel" onClick={() => navigate(addingPath(window.location.pathname))}>
+      <Icon name="plus" />
+    </button>
+  )
+}
+
+export function OperationsScreen({ ctx, place, narrow, refresh }: { ctx: MonthContext; place: Place; narrow: boolean; refresh: () => Promise<void> }) {
   const [filter, setFilter] = useState<Filter>('all')
   const bounds = operationsBounds(ctx)
   const month = clampOperationsMonth(place.month, bounds)
@@ -247,18 +265,33 @@ export function OperationsScreen({ ctx, place, narrow }: { ctx: MonthContext; pl
         </div>
         {empty || <PhoneList rows={rows} open={open} />}
         <Later view={view} month={month} bounds={bounds} />
+        <AddButton />
       </div>
     )
   }
+  const todo = todoCount(ctx)
+  const operation = record ? ctx.ledger.data.operations.find((o) => o.id === record.id) : undefined
+  const rowVersion = record ? (ctx.app.operations.find((o) => o.id === record.id)?.rowVersion ?? 1) : 1
   return (
     <div class="month">
       <header class="ops-head">
         <MonthNav month={month} bounds={bounds} narrow={false} />
         <Balance view={view} ctx={ctx} narrow={false} />
+        <div class="pl-actions ops-head__actions">
+          <button type="button" class="pl-btn pl-btn--primary label" onClick={() => navigate(addingPath(window.location.pathname))}>
+            <Icon name="plus" />
+            Ajout manuel
+          </button>
+        </div>
       </header>
       <div class="ops-filters">
         <Filters view={view} filter={filter} set={setFilter} />
         <span class="caption pl-muted">{count(view.rows.length, 'opération')} en {monthTitle(month).toLowerCase()}</span>
+        {todo > 0 && (
+          <button type="button" class="pl-btn label ops-categorize" onClick={() => navigate(CATEGORIZE_PATH)}>
+            Catégoriser ({todo})
+          </button>
+        )}
       </div>
       <div class="month__body">
         <div class="month-table">
@@ -273,7 +306,19 @@ export function OperationsScreen({ ctx, place, narrow }: { ctx: MonthContext; pl
                 Fermer
               </button>
             </div>
-            <Record view={record} />
+            {operation ? (
+              <RecordEditor
+                key={record.id}
+                ctx={ctx}
+                operation={operation}
+                rowVersion={rowVersion}
+                view={record}
+                refresh={refresh}
+                onDeleted={() => navigate(pathOf(month, bounds), { replace: true })}
+              />
+            ) : (
+              <Record view={record} />
+            )}
           </aside>
         )}
       </div>

@@ -10,7 +10,7 @@ on:
       jeu:
         description: Jeu de données fictives
         type: choice
-        options: [exemple, exemple-15-03, cas-a-b, 3-ans, vide]
+        options: [exemple, exemple-15-03, exemple-sans-operations, cas-a-b, 3-ans, vide]
         default: exemple
 
 permissions:

@@ -243,3 +243,63 @@ export interface RemoveOverrideRequest {
   rowVersion: number
   month: string
 }
+
+// Writes of lot 9: manual entry, the record of an operation, categorizing (spec 3.2, 3.3, R2,
+// R5, R6, R11). Amounts are signed cents, as on the statement.
+
+/** A part: its category (null only while the operation is to be categorized) and its signed amount. */
+export interface PartRequest {
+  categoryId: number | null
+  amountCents: number
+}
+
+/** One manual entry (spec 3.2): only the value date is asked, the date takes the same value. */
+export interface NewOperationItem {
+  valueDate: string
+  /** Signed, never 0. */
+  amountCents: number
+  categoryId: number | null
+  comment: string | null
+  /** R5: same amount and value date as an operation already there, or as another entry of the request: confirmed. */
+  confirmDuplicate?: boolean
+}
+
+/** POST /api/operations: several manual entries at once, all or nothing. */
+export interface NewOperationsRequest {
+  items: NewOperationItem[]
+}
+export const MAX_NEW_OPERATIONS = 50
+
+/**
+ * PATCH /api/operations/:id: the record of an operation (spec 3.2). Parts replace the ones
+ * there; a manual entry may also change its amount and value date (the first part then takes
+ * the difference, unless the parts are sent).
+ */
+export interface UpdateOperationRequest {
+  rowVersion: number
+  comment?: string | null
+  parts?: PartRequest[]
+  amountCents?: number
+  valueDate?: string
+  confirmDuplicate?: boolean
+}
+
+/** One operation of « Enregistrer N opérations » or « Mettre dans… » (spec 3.3). */
+export interface CategorizeItem {
+  id: number
+  rowVersion: number
+  parts: PartRequest[]
+  /** Left out: the comment does not change. */
+  comment?: string | null
+}
+
+/** POST /api/operations/categorize: all or nothing (spec 4.3). */
+export interface CategorizeRequest {
+  items: CategorizeItem[]
+}
+export const MAX_CATEGORIZE = 500
+
+/** POST /api/operations/:id/delete: a manual entry only, which is archived (spec 2.1). */
+export interface DeleteOperationRequest {
+  rowVersion: number
+}

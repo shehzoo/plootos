@@ -9,9 +9,11 @@ import { useNarrow } from './display'
 import { BudgetArea } from './budget/BudgetArea'
 import { SetupScreen } from './budget/SetupScreen'
 import { MonthScreen } from './month/MonthScreen'
+import { CategorizeScreen } from './operations/CategorizeScreen'
+import { ManualEntry } from './operations/ManualEntry'
 import { OperationsScreen } from './operations/OperationsScreen'
 import { ProjectionScreen } from './projection/ProjectionScreen'
-import { navigate, SECTIONS, usePlace, type Section } from './router'
+import { back, navigate, SECTIONS, usePlace, withoutAdding, type Section } from './router'
 
 type Load =
   | { state: 'loading' }
@@ -184,8 +186,22 @@ export function App() {
       <div class={`content${ctx ? ' content--month' : ''}`}>
         {ctx ? (
           <main>
-            {section === 'mois' && <MonthScreen ctx={ctx} place={place} narrow={narrow} refresh={refresh} />}
-            {section === 'operations' && <OperationsScreen ctx={ctx} place={place} narrow={narrow} />}
+            {/* « + Ajout manuel » (lot 9): a window over the screen on a computer, a full screen on a phone. */}
+            {place.adding && (
+              <ManualEntry
+                ctx={ctx}
+                narrow={narrow}
+                refresh={refresh}
+                onClose={() => back(withoutAdding(window.location.pathname, window.location.search))}
+              />
+            )}
+            {!(place.adding && narrow) && (
+              <>
+                {section === 'mois' && <MonthScreen ctx={ctx} place={place} narrow={narrow} refresh={refresh} />}
+                {section === 'operations' && place.categorize && <CategorizeScreen ctx={ctx} narrow={narrow} refresh={refresh} />}
+                {section === 'operations' && !place.categorize && <OperationsScreen ctx={ctx} place={place} narrow={narrow} refresh={refresh} />}
+              </>
+            )}
             {section === 'projection' && <ProjectionScreen ctx={ctx} narrow={narrow} />}
             {section === 'budget' && <BudgetArea ctx={ctx} place={place} narrow={narrow} refresh={refresh} />}
           </main>
