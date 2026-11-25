@@ -16,8 +16,13 @@ export function sectionFromPath(pathname: string): Section {
   return found ? found.id : 'mois'
 }
 
+/** Tabs of Budget on a computer (spec 3.0): the lines, the categories (3.7), the data (3.8). */
+export type BudgetTab = 'lignes' | 'categories' | 'donnees'
+
 export interface Place {
   section: Section
+  /** /budget, /budget/categories, /budget/donnees (a phone only has the lines). */
+  tab: BudgetTab
   /**
    * /mois/AAAA-MM, /operations/AAAA-MM, /budget/AAAA-MM: a month other than the current one
    * (null: the current month). On Budget, a computer shows the year of that month.
@@ -41,7 +46,8 @@ export function placeFromLocation(pathname: string, search: string): Place {
     const raw = params.get(name)
     return raw !== null && /^\d+$/.test(raw) ? Number(raw) : null
   }
-  return { section, month, categoryId: id('categorie'), operationId: id('operation'), lineId: id('ligne') }
+  const tab: BudgetTab = section === 'budget' && (parts[1] === 'categories' || parts[1] === 'donnees') ? parts[1] : 'lignes'
+  return { section, tab, month, categoryId: id('categorie'), operationId: id('operation'), lineId: id('ligne') }
 }
 
 /** Path of a month screen: the current month is "/", another one "/mois/AAAA-MM". */
@@ -64,6 +70,11 @@ export function operationsPath(month: Month | null, operationId: number | null =
 /** Budget: the month (a computer shows its year), and the line open in its record. */
 export function budgetPath(month: Month | null, lineId: number | null = null): string {
   return monthlyPath('/budget', month, 'ligne', lineId)
+}
+
+/** Path of a tab of Budget. */
+export function budgetTabPath(tab: BudgetTab): string {
+  return tab === 'lignes' ? '/budget' : `/budget/${tab}`
 }
 
 const PUSHED = 'plootos'

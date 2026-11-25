@@ -365,6 +365,152 @@ body {
   white-space: normal;
 }
 
+/* Categories (3.7), data and setup (3.8) */
+.budget-tabs {
+  margin-bottom: var(--space-4);
+}
+
+.catalog-text {
+  width: 100%;
+  min-width: 220px;
+}
+
+.catalog-text input {
+  text-align: left;
+}
+
+.catalog-select {
+  font: inherit;
+  font-size: 16px;
+  height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  background: var(--surface-card);
+  color: var(--ink);
+}
+
+.catalog-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.catalog-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-sunk);
+  border-radius: var(--radius-m);
+  margin-bottom: var(--space-3);
+}
+
+.catalog-add__fields {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.catalog-add .pl-field {
+  flex: 1;
+  min-width: 240px;
+}
+
+.catalog-warning {
+  margin: 0;
+  color: var(--warn);
+}
+
+.catalog-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.catalog-section[aria-current='true'] {
+  background: var(--surface-selected);
+}
+
+.catalog-category .pl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.catalog-category .pl-row[aria-current='true'] {
+  background: var(--surface-selected);
+}
+
+.catalog-addcat {
+  display: flex;
+}
+
+.catalog-subs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.catalog-subs li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.catalog-chip {
+  border: 1px solid var(--line-strong);
+  background: var(--surface-card);
+  color: var(--ink);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.catalog-chip[aria-current='true'] {
+  background: var(--surface-selected);
+}
+
+.catalog-arrows {
+  flex: none;
+}
+
+.catalog-up svg {
+  transform: rotate(180deg);
+}
+
+.catalog-data {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 560px;
+}
+
+.catalog-data h2,
+.catalog-data p {
+  margin: 0;
+}
+
+.setup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  max-width: 560px;
+  padding: var(--space-8) var(--space-4);
+}
+
+.setup h1,
+.setup p {
+  margin: 0;
+}
+
 /* Local development and staging only: measures and the simulated date. */
 .diagnostics {
   margin-top: var(--space-8);

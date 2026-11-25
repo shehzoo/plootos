@@ -86,3 +86,13 @@ export function signedPlainEuros(cents: number): string {
   if (cents < 0) return `${MINUS}${plainEuros(cents)}`
   return '0'
 }
+
+/**
+ * An amount typed in euros ("3000", "3 000,50", "-45.2", "1 234 €") as signed cents, or null if
+ * it is not a number with at most two decimals.
+ */
+export function parseEuros(text: string): number | null {
+  const t = text.replace(/[\s\u00a0\u202f]/g, '').replace(/€$/, '').replace(',', '.').replace(/^[−–]/, '-')
+  if (!/^-?\d{1,9}(\.\d{1,2})?$/.test(t)) return null
+  return Math.round(Number(t) * 100)
+}

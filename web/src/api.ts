@@ -1,7 +1,13 @@
 // All calls to the Worker go through here: session expiry, lost network and an outdated app
 // are handled in one place (spec 4.2, 4.8).
 
-import { API_VERSION, API_VERSION_HEADER, SIMULATED_TODAY_HEADER } from '../../shared/src/api'
+import {
+  API_VERSION,
+  API_VERSION_HEADER,
+  SIMULATED_TODAY_HEADER,
+  type ApiError,
+  type WriteResult,
+} from '../../shared/src/api'
 
 export class OfflineError extends Error {
   constructor() {
@@ -24,6 +30,23 @@ export class SessionExpiredError extends Error {
 export class AppOutdatedError extends Error {
   constructor() {
     super('app_outdated')
+  }
+}
+
+/** A write refused because an element changed meanwhile ("Modifié entre-temps", spec 4.3). */
+export class ConflictError extends Error {
+  constructor(readonly changed: NonNullable<ApiError['changed']>) {
+    super('conflict')
+  }
+}
+
+/** A write refused by a rule of the server: a fixed code, never a value (spec 4.3). */
+export class RuleError extends Error {
+  constructor(
+    readonly code: string,
+    readonly status: number,
+  ) {
+    super(code)
   }
 }
 
@@ -141,4 +164,52 @@ export async function apiGetText(path: string, deps: ApiDeps = browserDeps()): P
 
 export async function apiGet<T>(path: string, deps: ApiDeps = browserDeps()): Promise<T> {
   return JSON.parse(await apiGetText(path, deps)) as T
+}
+
+/**
+ * A write: a small JSON request, answered with the ids it inserted. An expired session or an
+ * outdated app reloads the page (a write not yet sent is lost, spec 4.2); a conflict or a refused
+ * rule is thrown for the screen to explain.
+ */
+export async function apiSend(
+  method: 'POST' | 'PATCH',
+  path: string,
+  body: unknown,
+  deps: ApiDeps = browserDeps(),
+): Promise<WriteResult> {
+  let res: Response
+  try {
+    res = await deps.fetch(path, {
+      method,
+      credentials: 'same-origin',
+      redirect: 'manual',
+      cache: 'no-store',
+      headers: { ...apiHeaders(deps), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    throw new OfflineError()
+  }
+
+  if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400) || res.status === 401) {
+    handleExpiredSession(deps)
+  }
+  const type = res.headers.get('Content-Type') ?? ''
+  if (!type.includes('application/json')) {
+    if (res.status === 403) throw new ForbiddenError()
+    // An HTML page where JSON was expected: Access's login page.
+    handleExpiredSession(deps)
+  }
+  let answer: unknown
+  try {
+    answer = await res.json()
+  } catch {
+    throw new OfflineError()
+  }
+  if (res.ok) return answer as WriteResult
+  const error = (answer ?? {}) as ApiError
+  if (res.status === 409 && error.error === 'app_outdated') handleOutdatedApp(deps)
+  if (res.status === 409 && error.error === 'conflict') throw new ConflictError(error.changed ?? [])
+  if (res.status === 403 && error.reason !== 'origin') throw new ForbiddenError()
+  throw new RuleError(error.error ?? 'error', res.status)
 }
