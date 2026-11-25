@@ -126,3 +126,64 @@ export interface DataResponse {
   lastExportAt: string | null
   tables: { [T in TableName]: Row[] }
 }
+
+// Writes (lot 7): requests and answers. Errors are ApiError with a fixed code (never a value).
+
+/** Answer of every successful write: the ids of the rows inserted, in insertion order. */
+export interface WriteResult {
+  ok: true
+  ids: number[]
+}
+
+/** POST /api/setup (spec 3.8): the bank balance at the end of the previous month. */
+export interface SetupRequest {
+  amountCents: number
+}
+
+/** The six sections created at setup (spec 3.8). */
+export const INITIAL_SECTIONS = [
+  ['Revenus réguliers', 'in'],
+  ['Revenus ponctuels', 'in'],
+  ['Dépenses fixes', 'out'],
+  ['Dépenses courantes', 'out'],
+  ['Dépenses ponctuelles', 'out'],
+  ['Épargne', 'out'],
+] as const
+
+/** POST /api/sections */
+export interface NewSectionRequest {
+  name: string
+  direction: 'in' | 'out'
+}
+
+/** POST /api/categories: a category (sectionId) or a subcategory (parentId). */
+export type NewCategoryRequest = { name: string } & (
+  | { sectionId: number }
+  | { parentId: number; confirmFirstSub?: boolean }
+)
+
+/** PATCH /api/sections/:id, PATCH /api/categories/:id (sectionId: level 1 only, same direction). */
+export interface UpdateRequest {
+  rowVersion: number
+  name?: string
+  sectionId?: number
+}
+
+/** POST /api/sections/:id/archive, POST /api/categories/:id/archive */
+export interface ArchiveRequest {
+  rowVersion: number
+}
+
+/** POST /api/order: the whole group in its new order, each with the version the app read. */
+export interface OrderRequest {
+  kind: 'section' | 'category'
+  /** Categories of a section, or subcategories of a category. */
+  group?: { sectionId: number } | { parentId: number }
+  items: { id: number; rowVersion: number }[]
+}
+
+/** PATCH /api/opening-balance: the amount only, its date never changes (spec 3.8). */
+export interface OpeningBalanceRequest {
+  rowVersion: number
+  amountCents: number
+}

@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { ApiError, MeResponse } from '../../shared/src/api'
+import { catalog } from './catalog'
 import { accessAuth, type AccessAuthOptions } from './auth'
 import { readBase, readOperationsPage, RestoreInProgressError } from './read'
 import { apiVersionCheck, securityHeaders, writeChecks } from './security'
@@ -35,6 +36,8 @@ export function createApp(options: AccessAuthOptions = {}) {
     const { body, headers } = json(await readOperationsPage(c.env, c.get('users'), page))
     return c.body(body, 200, headers)
   })
+
+  app.route('/', catalog)
 
   app.all('/api/*', (c) => c.json({ error: 'not_found' } satisfies ApiError, 404))
 

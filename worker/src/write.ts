@@ -131,6 +131,22 @@ export class WriteBatch {
     return this
   }
 
+  /**
+   * Archives, in one statement, the rows of a table that are not archived yet and match the
+   * condition (e.g. the categories of an archived section). Only sections and categories.
+   */
+  archiveWhere(table: 'section' | 'category', where: string, params: unknown[]): this {
+    this.statements.push(
+      this.db
+        .prepare(
+          `UPDATE ${table} SET archived_at = ?, row_version = row_version + 1, updated_by = ?, updated_at = ? ` +
+            `WHERE archived_at IS NULL AND (${where})`,
+        )
+        .bind(this.now, this.author, this.now, ...params),
+    )
+    return this
+  }
+
   get size(): number {
     return this.statements.length
   }

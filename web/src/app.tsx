@@ -6,7 +6,8 @@ import { loadData, type Loaded } from './data'
 import logoDark from './design/logo/plootos-mot-clair.svg'
 import logoLight from './design/logo/plootos-mot-sauge.svg'
 import { useNarrow } from './display'
-import { BudgetScreen } from './budget/BudgetScreen'
+import { BudgetArea } from './budget/BudgetArea'
+import { SetupScreen } from './budget/SetupScreen'
 import { MonthScreen } from './month/MonthScreen'
 import { OperationsScreen } from './operations/OperationsScreen'
 import { ProjectionScreen } from './projection/ProjectionScreen'
@@ -155,6 +156,15 @@ export function App() {
     void fetchMe()
   }, [fetchMe])
 
+  /**
+   * Reads everything again after a write (DECISIONS.md, 2026-11-25), keeping the screen as it is:
+   * no blank page, what was typed stays. An error is thrown to the screen that wrote.
+   */
+  const refresh = useCallback(async () => {
+    const data = await loadData()
+    setLoad((prev) => (prev.state === 'ready' ? { ...prev, data } : prev))
+  }, [])
+
   if (load.state === 'loading') return <main class="message" aria-busy="true" />
   if (load.state === 'offline')
     return <Message title="Pas de réseau" text="L'appli a besoin d'internet. Réessaie quand le réseau revient." retry={fetchMe} />
@@ -167,7 +177,6 @@ export function App() {
 
   const { data, me } = load
   const section = place.section
-  const current = SECTIONS.find((s) => s.id === section)!
   const ctx = data.ledger ? { ledger: data.ledger, app: data.app, today: data.today } : null
   return (
     <div class="shell">
@@ -178,15 +187,12 @@ export function App() {
             {section === 'mois' && <MonthScreen ctx={ctx} place={place} narrow={narrow} />}
             {section === 'operations' && <OperationsScreen ctx={ctx} place={place} narrow={narrow} />}
             {section === 'projection' && <ProjectionScreen ctx={ctx} narrow={narrow} />}
-            {section === 'budget' && <BudgetScreen ctx={ctx} place={place} narrow={narrow} />}
+            {section === 'budget' && <BudgetArea ctx={ctx} place={place} narrow={narrow} refresh={refresh} />}
           </main>
         ) : (
           <>
-            <header class="topbar">
-              <h1 class="title-l">{current.label}</h1>
-            </header>
             <main>
-              <p class="placeholder">Base vide : la mise en service arrive au lot 7.</p>
+              <SetupScreen today={data.today} narrow={narrow} refresh={refresh} />
             </main>
           </>
         )}

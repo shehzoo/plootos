@@ -59,6 +59,7 @@ seulement les variables et les classes du design system.
 |-------|----|
 | Lecture | `GET /api/data` : tout sauf les opérations, et le nombre de pages ; `GET /api/data/operations/:page` : 1 000 opérations et leurs parts. L'appli lit les pages en parallèle et relit tout si une page cite un élément inconnu. SQLite construit le JSON par paquets de 200 rangées (`worker/src/read.ts`) ; les auteurs y sont des prénoms, jamais des adresses |
 | Écriture | `WriteBatch` (`worker/src/write.ts`) : un lot D1 tout-ou-rien ; auteur et dates remplis ; `row_version` vérifié par une « garde » dans le lot (conflit : 409 `conflict` avec les éléments modifiés) ; refus pendant une restauration |
+| Écritures du catalogue (lot 7) | `worker/src/catalog.ts` : `POST /api/setup` (solde initial, six sections, base vide seulement), sections et catégories (`POST`, `PATCH`, `…/archive`), `POST /api/order` (ordre complet d'un groupe), `PATCH /api/opening-balance`. R4 (aucune ligne active) et R10 (même sens, parente fixe, première sous-catégorie confirmée) sont vérifiées par des gardes du lot D1. Côté appli : `apiSend` (`web/src/api.ts`) et `useWriter` (`web/src/budget/write.ts`) envoient, relisent toutes les données et expliquent un refus ou « Modifié entre-temps » |
 | Contrôles de chaque requête | `worker/src/security.ts` : numéro de compatibilité (`X-Plootos-Api`, sinon 409 `app_outdated` et l'appli se recharge), origine et JSON pour une écriture, en-têtes de sécurité et CSP stricte |
 | Journaux | Workers Logs coupés ; le Worker n'écrit que des codes fixes |
 
