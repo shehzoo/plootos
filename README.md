@@ -14,6 +14,8 @@ des environnements GitHub, les données dans la base.
 | `shared/` | Code partagé entre le navigateur et le Worker : moteur de calcul (`shared/src/engine`), testé sur les cas de la spec |
 | `worker/` | Code serveur (Hono) : vérifie le jeton d'Access, contrôle les écritures |
 | `web/` | Appli dans le navigateur (Preact, Vite) |
+| `design/source/` | Copie du design system, dont la référence est l'artefact Claude « Plootos » (type Design System) : jetons, charte, composants, icônes |
+| `DESIGN.md`, `web/src/design/` | Générés depuis `design/source/` par `npm run design` : design system au format DESIGN.md, variables CSS, styles des composants (`pl-*`) ; police Figtree auto-hébergée et mot-symbole |
 | `shared/fixtures/` | Jeux de données fictives (mois d'exemple, 3 ans), pour les tests et les bases locale et de recette ; jamais dans l'appli |
 | `migrations/` | Changements de schéma de la base, versionnés (`0001_initial.sql` : toutes les tables de la spec 4.5) |
 | `scripts/` | Chargement des données fictives, secrets du déploiement |
@@ -42,6 +44,14 @@ console du navigateur, `localStorage.setItem('plootos.simulatedToday', '2027-03-
 recharger ; `localStorage.removeItem('plootos.simulatedToday')` pour revenir à aujourd'hui.
 En local et en recette, une ligne en bas de page donne le volume chargé, les temps de
 chargement et la date du jour du serveur.
+
+## Design system
+
+La référence est l'artefact Claude « Plootos » (type Design System). Pour le changer : le
+modifier dans l'artefact, recopier ses fichiers dans `design/source/`, puis `npm run design`. Un
+test échoue si `DESIGN.md`, `web/src/design/tokens.css` ou `web/src/design/components.css` ne
+correspondent plus à leur source. Les écrans n'écrivent aucune couleur, taille ou police en dur :
+seulement les variables et les classes du design system.
 
 ## Base, lecture, écriture
 

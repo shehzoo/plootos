@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'preact/hooks'
 import type { MeResponse } from '../../shared/src/api'
 import { apiGet, AppOutdatedError, ForbiddenError, OfflineError, SessionExpiredError } from './api'
 import { loadData, type Loaded } from './data'
+import logoDark from './design/logo/plootos-mot-clair.svg'
+import logoLight from './design/logo/plootos-mot-sauge.svg'
 import { navigate, SECTIONS, useSection, type Section } from './router'
 
 type Load =
@@ -21,7 +23,13 @@ const PLACEHOLDER: Record<Section, string> = {
 
 function Nav({ current, variant }: { current: Section; variant: 'sidebar' | 'bottombar' }) {
   return (
-    <nav class={variant} aria-label="Navigation principale">
+    <nav class={variant === 'sidebar' ? 'sidebar' : 'bottombar label'} aria-label="Navigation principale">
+      {variant === 'sidebar' && (
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset={logoDark} />
+          <img class="logo" src={logoLight} alt="plootos" width={79} height={24} />
+        </picture>
+      )}
       {SECTIONS.map((s) => (
         <a
           key={s.id}
@@ -50,7 +58,7 @@ function Diagnostics({ data }: { data: Loaded }) {
   if (data.environment === 'production') return null
   const t = data.timings
   return (
-    <p class="diagnostics">
+    <p class="diagnostics caption">
       {data.app.operations.length} opérations, {(data.bytes / 1e6).toFixed(1)} Mo en {data.requests} requêtes · chargé en {ms(t.totalMs)} (réseau{' '}
       {ms(t.networkMs)}, lecture {ms(t.readMs)}, calcul {ms(t.computeMs)}) · aujourd'hui : {frenchDate(data.today)}
       {data.todaySimulated ? ' (date simulée)' : ''} · {data.environment === 'staging' ? 'recette' : 'local'}
@@ -62,10 +70,10 @@ function Message({ title, text, retry }: { title: string; text: string; retry?: 
   return (
     <main class="message">
       <div role="alert">
-        <h1>{title}</h1>
+        <h1 class="title-m">{title}</h1>
         <p>{text}</p>
         {retry && (
-          <button type="button" onClick={retry}>
+          <button type="button" class="pl-btn pl-btn--primary label" onClick={retry}>
             Réessayer
           </button>
         )}
@@ -112,8 +120,8 @@ export function App() {
       <Nav current={section} variant="sidebar" />
       <div class="content">
         <header class="topbar">
-          <h1>{current.label}</h1>
-          <span class="who">Bonjour {load.me.firstName}</span>
+          <h1 class="title-l">{current.label}</h1>
+          <span class="who label">Bonjour {load.me.firstName}</span>
         </header>
         <main>
           <p class="placeholder">
