@@ -83,8 +83,14 @@ jobs:
       - name: Restauration
         run: |
           OPTION=$(npx tsx scripts/exploitation.ts point)
-          npx wrangler d1 time-travel restore DB --env "$WRANGLER_ENV" --json "$OPTION" > "$RUNNER_TEMP/restore.json"
-          read -r BOOKMARK PREVIOUS < <(npx tsx scripts/exploitation.ts restored < "$RUNNER_TEMP/restore.json")
+          # Cloudflare's answer holds only bookmarks or an error message: shown if anything fails.
+          if ! npx wrangler d1 time-travel restore DB --env "$WRANGLER_ENV" --json "$OPTION" > "$RUNNER_TEMP/restore.json"; then
+            cat "$RUNNER_TEMP/restore.json"
+            exit 1
+          fi
+          OUT=$(npx tsx scripts/exploitation.ts restored < "$RUNNER_TEMP/restore.json")
+          BOOKMARK=${OUT% *}
+          PREVIOUS=${OUT#* }
           echo "BOOKMARK=$BOOKMARK" >> "$GITHUB_ENV"
           echo "PREVIOUS=$PREVIOUS" >> "$GITHUB_ENV"
           echo "Base ($NOM) restaurée au marque-page $BOOKMARK. Pour annuler : $PREVIOUS"
