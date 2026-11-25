@@ -370,6 +370,18 @@ export class Ledger {
     }
   }
 
+  // Operations of a month (detail of a category, screens 3.1 and 3.4)
+
+  /** Active operations valued in the month, by value date. */
+  monthOperations(month: Month): Operation[] {
+    return this.opsByMonth.get(month) ?? []
+  }
+
+  /** Parts of an operation: one by default, several when it is split. */
+  partsOf(operationId: Id): BudgetData['parts'] {
+    return this.partsByOperation.get(operationId) ?? []
+  }
+
   // R11
 
   /**

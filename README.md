@@ -34,14 +34,14 @@ En local seulement, `DEV_AUTH_EMAIL` remplace Access ; le Worker l'ignore hors d
 `localhost`.
 
 ```sh
-npm run seed -- exemple          # base locale : mois d'exemple (spec 1.3)
+npm run seed -- exemple          # base locale : mois d'exemple (spec 1.3), pour la date simulée du 01/04
+npm run seed -- exemple-15-03    # le mois d'exemple tel qu'entré le 15/03 au soir
 npm run seed -- 3-ans [AAAA-MM]  # 36 mois fictifs finissant à ce mois (mars 2027 par défaut)
 npm run seed -- vide             # base vide, comme avant la mise en service
 ```
 
-Date simulée (local et recette seulement ; le champ pour la choisir arrive au lot 5) : dans la
-console du navigateur, `localStorage.setItem('plootos.simulatedToday', '2027-03-15')`, puis
-recharger ; `localStorage.removeItem('plootos.simulatedToday')` pour revenir à aujourd'hui.
+Date simulée (local et recette seulement) : champ « Date simulée » en bas de page, puis
+« Appliquer » ; « Revenir à aujourd'hui » l'efface. Elle est gardée sur l'appareil.
 En local et en recette, une ligne en bas de page donne le volume chargé, les temps de
 chargement et la date du jour du serveur.
 
@@ -75,7 +75,7 @@ Secrets de chaque environnement GitHub (`staging`, `production`) :
 `ALLOWED_USERS` (`{"adresse": "Prénom"}`).
 
 Action « Données de recette » (« Run workflow », sur `main` ou la branche d'un lot) : vide toute
-la base de recette, réapplique les migrations et charge un jeu fictif (exemple, 3 ans ou vide).
+la base de recette, réapplique les migrations et charge un jeu fictif (exemple, exemple au 15/03, 3 ans ou vide).
 Elle n'a accès qu'à la recette. La personne 1 des données est la première adresse de
 `ALLOWED_USERS`.
 

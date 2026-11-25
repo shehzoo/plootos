@@ -241,16 +241,24 @@ export function exampleData(options: ExampleOptions = {}): BudgetData {
 /** Who categorized each operation (spec 1.3), ids 1 to 13: 0 is person 1, 1 is person 2. */
 const CATEGORIZED_BY: (0 | 1)[] = [0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1]
 
+/** Balance check of the data set "exemple-15-03": 12/03, the bank and the app agree. */
+const CHECK_MARCH_12 = { id: 1, checkDate: '2027-03-12', bankBalanceCents: euros(6495), gapCents: 0 }
+
 /**
  * The example month as a data set (spec 1.3), with its authors: person 1 sets up the budget
  * and imports; each operation is categorized by the person of the spec; person 2 sets the
- * Courses override. One balance check at the statement date: no gap.
+ * Courses override. Whole month: one balance check at the statement date, no gap. Entered up
+ * to a date (data set "exemple-15-03"): the operations valued up to that date, and one check
+ * on 12/03, no gap.
  */
-export function exampleSeedInput(): SeedInput {
-  const data = exampleData()
+export function exampleSeedInput(options: Pick<ExampleOptions, 'enteredUpTo'> = {}): SeedInput {
+  const data = exampleData(options)
+  const balanceChecks = options.enteredUpTo
+    ? [CHECK_MARCH_12].filter((c) => c.checkDate <= (options.enteredUpTo as IsoDate))
+    : [{ id: 1, checkDate: STATEMENT.date, bankBalanceCents: STATEMENT.balanceCents, gapCents: 0 }]
   return {
     data,
-    balanceChecks: [{ id: 1, checkDate: STATEMENT.date, bankBalanceCents: STATEMENT.balanceCents, gapCents: 0 }],
+    balanceChecks,
     authorship: (table, id) => {
       const setup = '2027-02-28T19:00:00.000Z'
       if (table === 'operation' || table === 'operation_part') {
@@ -263,7 +271,8 @@ export function exampleSeedInput(): SeedInput {
         return { createdBy: 1, createdAt: '2027-03-02T19:00:00.000Z', updatedBy: 1, updatedAt: '2027-03-02T19:00:00.000Z' }
       }
       if (table === 'balance_check') {
-        return { createdBy: 0, createdAt: '2027-04-02T20:00:00.000Z', updatedBy: 0, updatedAt: '2027-04-02T20:00:00.000Z' }
+        const at = `${balanceChecks.find((c) => c.id === id)?.checkDate ?? STATEMENT.date}T21:00:00.000Z`
+        return { createdBy: 0, createdAt: at, updatedBy: 0, updatedAt: at }
       }
       return { createdBy: 0, createdAt: setup, updatedBy: 0, updatedAt: setup }
     },
