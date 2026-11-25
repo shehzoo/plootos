@@ -10,6 +10,7 @@ import { BudgetArea } from './budget/BudgetArea'
 import { SetupScreen } from './budget/SetupScreen'
 import { MonthScreen } from './month/MonthScreen'
 import { CategorizeScreen } from './operations/CategorizeScreen'
+import { ImportScreen } from './operations/ImportScreen'
 import { ManualEntry } from './operations/ManualEntry'
 import { OperationsScreen } from './operations/OperationsScreen'
 import { ProjectionScreen } from './projection/ProjectionScreen'
@@ -199,7 +200,8 @@ export function App() {
               <>
                 {section === 'mois' && <MonthScreen ctx={ctx} place={place} narrow={narrow} refresh={refresh} />}
                 {section === 'operations' && place.categorize && <CategorizeScreen ctx={ctx} narrow={narrow} refresh={refresh} />}
-                {section === 'operations' && !place.categorize && <OperationsScreen ctx={ctx} place={place} narrow={narrow} refresh={refresh} />}
+                {section === 'operations' && place.importing && <ImportScreen ctx={ctx} narrow={narrow} refresh={refresh} />}
+                {section === 'operations' && !place.categorize && !place.importing && <OperationsScreen ctx={ctx} place={place} narrow={narrow} refresh={refresh} />}
               </>
             )}
             {section === 'projection' && <ProjectionScreen ctx={ctx} narrow={narrow} />}

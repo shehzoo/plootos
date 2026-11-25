@@ -45,6 +45,8 @@ export class RuleError extends Error {
   constructor(
     readonly code: string,
     readonly status: number,
+    /** The whole answer, when it carries more than the code (an import whose sort changed). */
+    readonly body?: unknown,
   ) {
     super(code)
   }
@@ -171,12 +173,12 @@ export async function apiGet<T>(path: string, deps: ApiDeps = browserDeps()): Pr
  * outdated app reloads the page (a write not yet sent is lost, spec 4.2); a conflict or a refused
  * rule is thrown for the screen to explain.
  */
-export async function apiSend(
+export async function apiSend<T = WriteResult>(
   method: 'POST' | 'PATCH',
   path: string,
   body: unknown,
   deps: ApiDeps = browserDeps(),
-): Promise<WriteResult> {
+): Promise<T> {
   let res: Response
   try {
     res = await deps.fetch(path, {
@@ -206,10 +208,10 @@ export async function apiSend(
   } catch {
     throw new OfflineError()
   }
-  if (res.ok) return answer as WriteResult
+  if (res.ok) return answer as T
   const error = (answer ?? {}) as ApiError
   if (res.status === 409 && error.error === 'app_outdated') handleOutdatedApp(deps)
   if (res.status === 409 && error.error === 'conflict') throw new ConflictError(error.changed ?? [])
   if (res.status === 403 && error.reason !== 'origin') throw new ForbiddenError()
-  throw new RuleError(error.error ?? 'error', res.status)
+  throw new RuleError(error.error ?? 'error', res.status, answer)
 }

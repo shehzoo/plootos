@@ -106,6 +106,45 @@ export class WriteBatch {
     return this
   }
 
+  /**
+   * Inserts many rows of the same columns, several per statement (D1 binds at most 100 values
+   * per statement): an import writes hundreds of operations in one batch. Their ids are not
+   * returned.
+   */
+  insertRows(table: TableName, columns: string[], rows: (string | number | null)[][]): this {
+    columns.forEach((c) => checkColumn(table, c))
+    const width = columns.length + 4
+    const perStatement = Math.max(1, Math.floor(100 / width))
+    const marks = `(${Array.from({ length: width }, () => '?').join(', ')})`
+    for (let i = 0; i < rows.length; i += perStatement) {
+      const chunk = rows.slice(i, i + perStatement)
+      for (const r of chunk) if (r.length !== columns.length) throw new Error('write: row width')
+      const sql =
+        `INSERT INTO ${table} (${[...columns, 'created_by', 'created_at', 'updated_by', 'updated_at'].join(', ')}) ` +
+        `VALUES ${chunk.map(() => marks).join(', ')}`
+      const params = chunk.flatMap((r) => [...r, this.author, this.now, this.author, this.now])
+      this.statements.push(this.db.prepare(sql).bind(...params))
+    }
+    return this
+  }
+
+  /**
+   * Gives each operation imported by this batch, and still without a part, one part to
+   * categorize of its whole amount (spec 2.1). One statement, whatever the number of operations.
+   */
+  partsForImported(): this {
+    this.statements.push(
+      this.db
+        .prepare(
+          'INSERT INTO operation_part (operation_id, category_id, amount_cents, created_by, created_at, updated_by, updated_at) ' +
+            "SELECT o.id, NULL, o.amount_cents, ?, ?, ?, ? FROM operation o WHERE o.origin = 'import' AND o.created_at = ? " +
+            'AND NOT EXISTS (SELECT 1 FROM operation_part p WHERE p.operation_id = o.id) ORDER BY o.id',
+        )
+        .bind(this.author, this.now, this.author, this.now, this.now),
+    )
+    return this
+  }
+
   /** Updates a row; its row_version goes up and its last author is set. */
   update(table: VersionedTable, id: number, values: Record<string, Value>): this {
     const columns = Object.keys(values)

@@ -7,6 +7,8 @@ dist/
 .env*
 # Never commit real data: bank statements or app exports.
 *.xlsx
+# The one exception: the fictitious export of spec 1.3, a test case (EXEMPLE values only).
+!shared/fixtures/files/export-exemple.xlsx
 *.xls
 *.csv
 exports/

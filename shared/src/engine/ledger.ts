@@ -14,6 +14,7 @@ import type {
   Id,
   IsoDate,
   Month,
+  OpeningBalance,
   Operation,
   Section,
 } from './model'
@@ -103,6 +104,17 @@ interface MonthFigures {
 const add = (map: Map<Id, number>, key: Id, value: number) => map.set(key, (map.get(key) ?? 0) + value)
 /** Never -0: a sign applied to zero must not show as "-0 €". */
 const signed = (sign: 1 | -1, value: number) => (value === 0 ? 0 : sign * value)
+
+/**
+ * C7, the rule itself: the opening balance plus the active operations valued after it, up to
+ * this date included. The Worker uses it to record a balance check (spec 4.1), on totals by
+ * value date; the Ledger answers the same, faster, from running totals.
+ */
+export function balanceOf(opening: OpeningBalance, entries: Iterable<{ valueDate: IsoDate; amountCents: number }>, date: IsoDate): number {
+  let total = opening.amountCents
+  for (const e of entries) if (e.valueDate > opening.balanceDate && e.valueDate <= date) total += e.amountCents
+  return total
+}
 
 export class Ledger {
   private readonly categoryById = new Map<Id, Category>()

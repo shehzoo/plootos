@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   Ledger,
+  balanceOf,
   checkMergePairs,
   importBalanceGap,
   sortImport,
@@ -167,6 +168,15 @@ describe('identical rows (R8, ranks)', () => {
     expect(sort.dupRank.get(1)).toBe(2)
   })
 
+  it('recognizes an operation whose label changed case between two statements (November 2026)', () => {
+    const data = exampleData({ withoutOperations: true })
+    data.operations.push({ id: 1, ...row, origin: 'import', dupRank: 1, comment: null, archivedAt: null })
+    const lower = { ...row, bankLabel: 'Paiement par carte - Boulangerie Exemple 10/03 - Ville Exemple', bankLabelRaw: 'Paiement par carte - X0000 Boulangerie Exemple 10/03 - Ville Exemple' }
+    const sort = sortImport([lower, { ...lower }], data.operations, data.openingBalance.balanceDate)
+    expect(sort.alreadyPresent).toEqual([0])
+    expect(sort.dupRank.get(1)).toBe(2)
+  })
+
   it('ranks identical new rows 1, 2, 3', () => {
     const sort = sortImport([row, { ...row }, { ...row }], [], '2027-02-28')
     expect([...sort.dupRank.values()]).toEqual([1, 2, 3])
@@ -199,5 +209,16 @@ describe('merge pairs (R9)', () => {
     expect(checkMergePairs(sort, [{ rowIndex: 0, operationId: 1 }, { rowIndex: 1, operationId: 1 }])).toBe(false)
     expect(checkMergePairs(sort, [{ rowIndex: 0, operationId: 1 }, { rowIndex: 0, operationId: 2 }])).toBe(false)
     expect(checkMergePairs(sort, [{ rowIndex: 0, operationId: 3 }])).toBe(false)
+  })
+})
+
+describe('C7 for a balance check (spec 4.1: the same rule in the app and the Worker)', () => {
+  it('balanceOf on the operations gives the Ledger balance at every date', () => {
+    const data = exampleData()
+    data.operations[2]!.archivedAt = '2027-03-30T10:00:00Z'
+    const ledger = new Ledger(data)
+    for (const date of ['2027-02-28', '2027-03-01', '2027-03-15', '2027-03-31', '2027-04-01', '2027-04-02']) {
+      expect(balanceOf(data.openingBalance, data.operations.filter((o) => o.archivedAt === null), date)).toBe(ledger.balanceAt(date))
+    }
   })
 })

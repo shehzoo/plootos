@@ -1,14 +1,15 @@
 // Screen 3.2, operations: the list of a month and the record of an operation, on a computer and
 // on a phone (lot 6). Lot 9: « + Ajout manuel » (a + button on a phone), the record can be
-// changed on a computer, « Catégoriser » opens screen 3.3. Import and balance check arrive in
-// lot 10 and stay hidden until then (DECISIONS.md, 2026-11-25).
+// changed on a computer, « Catégoriser » opens screen 3.3. Lot 10, on a computer: « Importer
+// relevé bancaire (XLSX) » opens the import screen, « Vérifier le solde » a small window.
 
 import { useState } from 'preact/hooks'
 import { addMonths, type Id, type Month } from '../../../shared/src/engine'
 import { count, eurosOrMinus, fullDate, monthTitle, shortDate, signedEuros } from '../format'
 import { Icon } from '../icons'
 import { checkText, type MonthContext } from '../month/view'
-import { addingPath, back, CATEGORIZE_PATH, navigate, operationsPath, type Place } from '../router'
+import { addingPath, back, CATEGORIZE_PATH, IMPORT_PATH, navigate, operationsPath, type Place } from '../router'
+import { CheckDialog } from './BalanceCheck'
 import { todoCount } from './entry'
 import { RecordEditor } from './RecordEditor'
 import {
@@ -213,6 +214,7 @@ export function AddButton() {
 
 export function OperationsScreen({ ctx, place, narrow, refresh }: { ctx: MonthContext; place: Place; narrow: boolean; refresh: () => Promise<void> }) {
   const [filter, setFilter] = useState<Filter>('all')
+  const [checking, setChecking] = useState(false)
   const bounds = operationsBounds(ctx)
   const month = clampOperationsMonth(place.month, bounds)
   const view = operationsView(ctx, month)
@@ -278,6 +280,12 @@ export function OperationsScreen({ ctx, place, narrow, refresh }: { ctx: MonthCo
         <MonthNav month={month} bounds={bounds} narrow={false} />
         <Balance view={view} ctx={ctx} narrow={false} />
         <div class="pl-actions ops-head__actions">
+          <button type="button" class="pl-btn pl-btn--ghost label" onClick={() => setChecking(true)}>
+            Vérifier le solde
+          </button>
+          <button type="button" class="pl-btn label" onClick={() => navigate(IMPORT_PATH)}>
+            Importer relevé bancaire (XLSX)
+          </button>
           <button type="button" class="pl-btn pl-btn--primary label" onClick={() => navigate(addingPath(window.location.pathname))}>
             <Icon name="plus" />
             Ajout manuel
@@ -322,6 +330,7 @@ export function OperationsScreen({ ctx, place, narrow, refresh }: { ctx: MonthCo
           </aside>
         )}
       </div>
+      {checking && <CheckDialog ctx={ctx} refresh={refresh} onClose={() => setChecking(false)} />}
     </div>
   )
 }

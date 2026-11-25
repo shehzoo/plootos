@@ -303,3 +303,84 @@ export const MAX_CATEGORIZE = 500
 export interface DeleteOperationRequest {
   rowVersion: number
 }
+
+// Lot 10: import of a statement and balance check (spec 3.2, 4.4, U8, R8, R9). Amounts are
+// signed cents, as on the statement.
+
+/** Most operations in one statement: beyond, the app asks for a shorter period (measured in staging). */
+export const MAX_IMPORT_ROWS = 2000
+
+/**
+ * One operation read from the statement (spec 4.4, step 2). Only the raw first line of its
+ * label is sent: the Worker normalizes it with the same function as the app (R8).
+ */
+export interface ImportRowRequest {
+  opDate: string
+  valueDate: string
+  amountCents: number
+  bankLabelRaw: string
+}
+
+/** The « Solde au » of the statement: the only thing sent from above its header. */
+export interface StatementBalanceRequest {
+  date: string
+  balanceCents: number
+}
+
+/** POST /api/import/preview */
+export interface ImportPreviewRequest {
+  balance: StatementBalanceRequest
+  rows: ImportRowRequest[]
+}
+
+/** Rows and manual entries of the same value date and amount: pairs chosen one by one (R9). */
+export interface ImportMergeGroup {
+  valueDate: string
+  amountCents: number
+  rowIndexes: number[]
+  operationIds: number[]
+}
+
+/** The Worker's sort of the rows (indexes in the order sent), and what the check will compare. */
+export interface ImportPreview {
+  /** Valued on or before the opening balance date: set aside (R6). */
+  excluded: number[]
+  alreadyPresent: number[]
+  toMerge: ImportMergeGroup[]
+  fresh: number[]
+  /** C7 at the statement date, before the import. */
+  appBalanceCents: number
+  /** Sent back with the import: if the sort changed meanwhile, nothing is written. */
+  token: string
+}
+
+/** POST /api/import: the confirmed pairs; the rows of a group left without a pair import as new. */
+export interface ImportRequest extends ImportPreviewRequest {
+  token: string
+  pairs: { rowIndex: number; operationId: number }[]
+}
+
+/** Answer of POST /api/import; 409 `import_changed` carries the new preview instead. */
+export interface ImportResult {
+  ok: true
+  imported: number
+  merged: number
+  check: { id: number; date: string; bankBalanceCents: number; gapCents: number }
+}
+
+/** 409 of POST /api/import when the sort changed (another import, an entry): the new sort. */
+export interface ImportChanged extends ApiError {
+  error: 'import_changed'
+  preview: ImportPreview
+}
+
+/** POST /api/balance-checks: the bank's balance today (DECISIONS.md, 2026-11-25). */
+export interface BalanceCheckRequest {
+  bankBalanceCents: number
+}
+
+/** Answer of POST /api/balance-checks. */
+export interface BalanceCheckResult {
+  ok: true
+  check: { id: number; date: string; bankBalanceCents: number; gapCents: number }
+}
