@@ -1,12 +1,36 @@
-// Tab « Données » of Budget (spec 3.8, computer only): the opening balance, its date fixed at
-// setup and its amount editable. The export arrives in lot 11 and stays hidden until then.
+// Tab « Données » of Budget (spec 3.8, computer only): « Exporter les données » and the date of
+// the last export (lot 11, spec 4.6); the opening balance, its date fixed at setup and its amount
+// editable.
 
 import { useState } from 'preact/hooks'
 import type { OpeningBalanceRequest } from '../../../shared/src/api'
 import { apiSend } from '../api'
-import { euros, fullDate, parseEuros } from '../format'
+import { dateTime, euros, fullDate, parseEuros } from '../format'
 import type { MonthContext } from '../month/view'
+import { useExport } from './backup'
 import { useWriter } from './write'
+
+function ExportPanel({ lastExportAt, refresh }: { lastExportAt: string | null; refresh: () => Promise<void> }) {
+  const { busy, message, run } = useExport(refresh)
+  return (
+    <section class="pl-panel catalog-data" aria-label="Exporter les données">
+      <h2 class="title-m">Exporter les données</h2>
+      <p class="body">{lastExportAt ? `Dernier export : le ${dateTime(lastExportAt)}.` : 'Aucun export pour l’instant.'}</p>
+      <p class="caption pl-muted">
+        Un fichier JSON avec toutes les données, éléments archivés compris : la copie de secours hors de Cloudflare, et le fichier de « Restaurer
+        depuis un export ». Range-le dans un dossier personnel. Un bandeau le rappelle sur le mois en cours au-delà d'un mois.
+      </p>
+      <button type="button" class="pl-btn pl-btn--primary label" disabled={busy} onClick={run}>
+        {busy ? 'Export…' : 'Exporter les données'}
+      </button>
+      {message && (
+        <p class={message.kind === 'error' ? 'pl-banner pl-banner--over' : 'body'} role={message.kind === 'error' ? 'alert' : 'status'}>
+          {message.text}
+        </p>
+      )}
+    </section>
+  )
+}
 
 const asText = (cents: number) => (cents / 100).toFixed(2).replace('.', ',')
 
@@ -26,7 +50,8 @@ export function DataScreen({ ctx, refresh }: { ctx: MonthContext; refresh: () =>
         </div>
       </header>
       <div class="month__body">
-        <div class="month-table">
+        <div class="month-table data-panels">
+          <ExportPanel lastExportAt={ctx.lastExportAt ?? null} refresh={refresh} />
           <section class="pl-panel catalog-data" aria-label="Solde initial">
             <h2 class="title-m">Solde initial</h2>
             <p class="body">

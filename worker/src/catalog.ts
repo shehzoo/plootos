@@ -40,8 +40,9 @@ interface CategoryRow {
 
 export const catalog = new Hono<AppEnv>()
 
-// Setup (spec 3.8): the opening balance and the six initial sections, only on an empty database.
-const EMPTY =
+// Setup (spec 3.8): the opening balance and the six initial sections, only on an empty database
+// (no data outside meta; also the condition of a restore).
+export const EMPTY =
   'NOT EXISTS (SELECT 1 FROM opening_balance) AND NOT EXISTS (SELECT 1 FROM section) AND ' +
   'NOT EXISTS (SELECT 1 FROM category) AND NOT EXISTS (SELECT 1 FROM budget_line) AND ' +
   'NOT EXISTS (SELECT 1 FROM operation) AND NOT EXISTS (SELECT 1 FROM balance_check)'

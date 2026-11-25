@@ -6,6 +6,12 @@
  */
 export const API_VERSION = 2
 
+/**
+ * Version of the database schema this code is written for: the number of migrations (a test
+ * checks it). An export carries it; an older export is converted, a newer one refused (spec 3.8).
+ */
+export const SCHEMA_VERSION = 1
+
 /** Sent by the app with every API request. */
 export const API_VERSION_HEADER = 'X-Plootos-Api'
 /** Simulated "today" ('YYYY-MM-DD'), honoured in local development and staging only. */
@@ -383,4 +389,20 @@ export interface BalanceCheckRequest {
 export interface BalanceCheckResult {
   ok: true
   check: { id: number; date: string; bankBalanceCents: number; gapCents: number }
+}
+
+// Lot 11: export and restore (spec 3.8, 4.6). The lots of a restore: RestoreLotRequest
+// (shared/src/backup.ts).
+
+/** Answer of POST /api/exports: the date of the last export, now. */
+export interface ExportRecorded {
+  ok: true
+  lastExportAt: string
+}
+
+/** Answer of each lot of POST /api/restore. */
+export interface RestoreLotResult {
+  ok: true
+  lot: number
+  done: boolean
 }

@@ -1,0 +1,96 @@
+# « Vider la base » (spec 4.6): before restoring an export on a database that is not empty, or
+# after an unfinished restore. Launched by hand (« Run workflow »), for staging (« recette ») or
+# production, with the word VIDER typed in « confirmation ».
+# It first notes a bookmark: emptying can be undone for 7 days with « Restaurer à une date ».
+# Then it drops every table, migration history included, and applies the migrations again: the
+# database is empty, the app opens on its setup screen. Production: from main only (the
+# "production" GitHub environment is reserved to main). Prints no data, only bookmarks.
+name: Vider la base
+
+on:
+  workflow_dispatch:
+    inputs:
+      environnement:
+        description: Base à vider
+        type: choice
+        options: [recette, production]
+        default: recette
+      confirmation:
+        description: Taper VIDER pour confirmer
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Vérifications
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: npx tsx scripts/exploitation.ts confirm VIDER
+      - name: Branche
+        if: inputs.environnement == 'production' && github.ref != 'refs/heads/main'
+        run: |
+          echo "La production ne se vide que depuis main. Rien n'a été touché."
+          exit 1
+
+  empty:
+    name: Vider la base
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environnement == 'production' && 'production' || 'staging' }}
+    # Same group as the deployments of that environment, never cancelled: one waits for the other.
+    concurrency:
+      group: ${{ inputs.environnement == 'production' && 'production' || 'staging' }}
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_SEND_METRICS: 'false'
+      WRANGLER_ENV: ${{ inputs.environnement == 'production' && 'production' || 'staging' }}
+      NOM: ${{ inputs.environnement }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Marque-page
+        run: |
+          npx wrangler d1 time-travel info DB --env "$WRANGLER_ENV" --json > "$RUNNER_TEMP/info.json"
+          BOOKMARK=$(npx tsx scripts/exploitation.ts bookmark < "$RUNNER_TEMP/info.json")
+          echo "BOOKMARK=$BOOKMARK" >> "$GITHUB_ENV"
+          echo "Marque-page avant de vider ($NOM) : $BOOKMARK"
+      - name: Base vidée
+        run: |
+          npx tsx scripts/exploitation.ts drop > "$RUNNER_TEMP/drop.sql"
+          npx wrangler d1 execute DB --env "$WRANGLER_ENV" --remote --yes --file "$RUNNER_TEMP/drop.sql" > /dev/null
+      - name: Changements de schéma
+        run: npx wrangler d1 migrations apply DB --env "$WRANGLER_ENV" --remote
+      - name: Résumé
+        run: |
+          {
+            echo "## Base vidée ($NOM)"
+            echo
+            echo "L'appli s'ouvre sur la mise en service : « Commencer » ou « Restaurer depuis un export »."
+            echo
+            echo "Pour annuler, dans les 7 jours : action « Restaurer à une date », environnement $NOM, point :"
+            echo
+            echo "\`$BOOKMARK\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Base vidée ($NOM). Marque-page pour annuler : $BOOKMARK"

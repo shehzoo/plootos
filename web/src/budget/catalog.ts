@@ -126,6 +126,13 @@ export function ruleText(code: string): string {
       return 'Seul un ajout manuel peut être supprimé.'
     case 'operation_archived':
       return 'Cette opération a été supprimée : les données ont été rechargées.'
+    // Restore (lot 11): refused at the first lot, nothing written.
+    case 'not_empty':
+      return "La base n'est plus vide (une mise en service a commencé entre-temps) : rien n'est restauré."
+    case 'other_environment':
+      return "Cet export vient d'un autre environnement : rien n'est restauré."
+    case 'schema_mismatch':
+      return "La version de l'appli a changé : recharge la page, puis recommence. Rien n'est restauré."
     default:
       return lineErrorText(code) || 'Écriture refusée.'
   }
