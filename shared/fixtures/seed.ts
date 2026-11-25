@@ -1,7 +1,20 @@
 // Fictitious data sets, as database rows: written as SQL for a local or staging database
 // (scripts/seed.ts), or as the answer the Worker would give (tests). Never real data.
 
-import { TABLE_COLUMNS, TABLE_NAMES, type Cell, type DataResponse, type Row, type TableName } from '../src/api'
+import {
+  API_VERSION,
+  BASE_TABLES,
+  OPERATIONS_PER_PAGE,
+  TABLE_COLUMNS,
+  TABLE_NAMES,
+  type BaseResponse,
+  type BaseTable,
+  type Cell,
+  type DataResponse,
+  type OperationsPageResponse,
+  type Row,
+  type TableName,
+} from '../src/api'
 import type { BudgetData, Id, IsoDate } from '../src/engine/model'
 
 /** Addresses of person 1 and person 2 (fictitious, or read from the staging secret). */
@@ -206,7 +219,7 @@ export function seedResponse(seed: SeedData, users: Map<string, string>, today: 
       )
   }
   return {
-    apiVersion: 1,
+    apiVersion: API_VERSION,
     environment: 'local',
     today,
     todaySimulated: false,
@@ -214,4 +227,26 @@ export function seedResponse(seed: SeedData, users: Map<string, string>, today: 
     lastExportAt: null,
     tables,
   }
+}
+
+/** The answers of GET /api/data and of each page of operations, on these rows. */
+export function seedPages(
+  seed: SeedData,
+  users: Map<string, string>,
+  today: string,
+): { base: BaseResponse; pages: OperationsPageResponse[] } {
+  const whole = seedResponse(seed, users, today)
+  const maxId = Math.max(0, ...seed.operation.map((o) => Number(o.id)))
+  const count = Math.ceil(maxId / OPERATIONS_PER_PAGE)
+  const pageOf = (operationId: Cell) => Math.floor((Number(operationId) - 1) / OPERATIONS_PER_PAGE)
+  const pages: OperationsPageResponse[] = Array.from({ length: count }, (_, page) => ({
+    page,
+    tables: {
+      operation: whole.tables.operation.filter((r) => pageOf(r[0] ?? null) === page),
+      operation_part: whole.tables.operation_part.filter((r) => pageOf(r[1] ?? null) === page),
+    },
+  }))
+  const tables = Object.fromEntries(BASE_TABLES.map((t) => [t, whole.tables[t]])) as { [T in BaseTable]: Row[] }
+  const { tables: _all, ...head } = whole
+  return { base: { ...head, tables, operationPages: count }, pages }
 }

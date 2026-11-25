@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { API_VERSION_HEADER, SIMULATED_TODAY_HEADER } from '../../shared/src/api'
 import { exampleSeedInput } from '../../shared/fixtures/example'
-import { EMPTY_SEED, seedResponse, toSeed } from '../../shared/fixtures/seed'
+import { EMPTY_SEED, seedPages, toSeed } from '../../shared/fixtures/seed'
+import type { BaseResponse, OperationsPageResponse } from '../../shared/src/api'
 import {
   apiGet,
   AppOutdatedError,
@@ -11,7 +12,7 @@ import {
   SIMULATED_TODAY_KEY,
   type ApiDeps,
 } from '../src/api'
-import { loadData } from '../src/data'
+import { InconsistentDataError, loadData } from '../src/data'
 import { sectionFromPath } from '../src/router'
 
 function deps(response: Response | Error, now = 100_000, settings: Record<string, string> = {}) {
@@ -91,7 +92,7 @@ describe('headers of every request', () => {
   it('carry the compatibility number', async () => {
     const { d } = deps(json({}))
     await apiGet('/api/me', d)
-    expect(sent(d)[API_VERSION_HEADER]).toBe('1')
+    expect(sent(d)[API_VERSION_HEADER]).toBe('2')
     expect(sent(d)[SIMULATED_TODAY_HEADER]).toBeUndefined()
   })
 
@@ -124,20 +125,53 @@ describe('outdated app (spec 4.8)', () => {
 
 describe('loadData', () => {
   const users = new Map([['p1@example.test', 'Alice'], ['p2@example.test', 'Bob']])
+  const example = () => seedPages(toSeed(exampleSeedInput(), ['p1@example.test', 'p2@example.test']), users, '2027-03-15')
 
-  it('loads, decodes and computes the example month, with its measures', async () => {
-    const body = seedResponse(toSeed(exampleSeedInput(), ['p1@example.test', 'p2@example.test']), users, '2027-03-15')
+  /** A server answering the base, then each page; `answers` may change the base at each read. */
+  function server(base: () => BaseResponse, pages: OperationsPageResponse[]) {
+    const { d } = deps(json({}))
+    d.fetch = vi.fn(async (url: string) => {
+      const m = /^\/api\/data\/operations\/(\d+)$/.exec(url)
+      return json(m ? pages[Number(m[1])] : base())
+    }) as unknown as typeof fetch
+    return d
+  }
+
+  it('reads the base, then every page, and computes the example month', async () => {
+    const { base, pages } = example()
     let tick = 0
-    const loaded = await loadData(deps(json(body)).d, () => (tick += 10))
+    const loaded = await loadData(server(() => base, pages), () => (tick += 10))
     expect(loaded.app.operations).toHaveLength(13)
+    expect(loaded.requests).toBe(2)
     expect(loaded.ledger?.balanceAt('2027-03-15')).toBe(594500)
     expect(loaded.today).toBe('2027-03-15')
     expect(loaded.timings).toEqual({ networkMs: 10, readMs: 10, computeMs: 10, totalMs: 30 })
   })
 
+  it('reads again when a page cites a category the base does not have yet', async () => {
+    const { base, pages } = example()
+    // First read: the base misses category 31 (created between the base and the page).
+    const reads: BaseResponse[] = [
+      { ...base, tables: { ...base.tables, category: base.tables.category.filter((r) => r[0] !== 31) } },
+      base,
+    ]
+    let n = 0
+    const loaded = await loadData(server(() => reads[Math.min(n++, 1)] as BaseResponse, pages))
+    expect(n).toBe(2)
+    expect(loaded.app.categories.some((c) => c.id === 31)).toBe(true)
+  })
+
+  it('gives up after three inconsistent reads', async () => {
+    const { base, pages } = example()
+    const broken = { ...base, tables: { ...base.tables, category: base.tables.category.filter((r) => r[0] !== 31) } }
+    await expect(loadData(server(() => broken, pages))).rejects.toBeInstanceOf(InconsistentDataError)
+  })
+
   it('has no ledger before the app is set up', async () => {
-    const loaded = await loadData(deps(json(seedResponse(EMPTY_SEED, users, '2027-03-15'))).d)
+    const { base, pages } = seedPages(EMPTY_SEED, users, '2027-03-15')
+    const loaded = await loadData(server(() => base, pages))
     expect(loaded.ledger).toBeNull()
+    expect(loaded.requests).toBe(1)
   })
 })
 

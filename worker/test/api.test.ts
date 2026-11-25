@@ -1,11 +1,19 @@
 // GET /api/data and the checks of every API request, on a local D1 database.
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { API_VERSION, API_VERSION_HEADER, SIMULATED_TODAY_HEADER, type DataResponse } from '../../shared/src/api'
+import {
+  API_VERSION,
+  API_VERSION_HEADER,
+  OPERATIONS_PER_PAGE,
+  SIMULATED_TODAY_HEADER,
+  type BaseResponse,
+  type DataResponse,
+  type OperationsPageResponse,
+} from '../../shared/src/api'
 import { Ledger } from '../../shared/src/engine'
-import { budgetData, decodeData } from '../../shared/src/wire'
+import { assemble, budgetData, decodeData, isConsistent } from '../../shared/src/wire'
 import { euros, exampleSeedInput } from '../../shared/fixtures/example'
-import { seedResponse, seedSql, toSeed } from '../../shared/fixtures/seed'
+import { seedPages, seedSql, toSeed } from '../../shared/fixtures/seed'
 import { threeYearsSeedInput } from '../../shared/fixtures/three-years'
 import { createApp } from '../src/app'
 import { CHUNK_ROWS, selectSql } from '../src/read'
@@ -47,7 +55,19 @@ const data = async (headers: Record<string, string> = apiHeaders, e = env()) => 
   const res = await get('/api/data', headers, e)
   expect(res.status).toBe(200)
   const text = await res.text()
-  return { res, text, body: JSON.parse(text) as DataResponse }
+  return { res, text, body: JSON.parse(text) as BaseResponse }
+}
+const page = async (k: number, e = env()) => {
+  const res = await get(`/api/data/operations/${k}`, apiHeaders, e)
+  expect(res.status).toBe(200)
+  const text = await res.text()
+  return { text, body: JSON.parse(text) as OperationsPageResponse }
+}
+/** What the app does at start: the base, then every page. */
+const loadAll = async (headers: Record<string, string> = apiHeaders, e = env()): Promise<DataResponse> => {
+  const { body } = await data(headers, e)
+  const pages = await Promise.all(Array.from({ length: body.operationPages }, (_, k) => page(k, e)))
+  return assemble(body, pages.map((p) => p.body))
 }
 
 describe('GET /api/data, example month (spec 1.3)', () => {
@@ -56,10 +76,12 @@ describe('GET /api/data, example month (spec 1.3)', () => {
     await runSql(t.db, seedSql(toSeed(exampleSeedInput(), AUTHORS)))
   })
 
-  it('answers what the rows hold, authors as first names', async () => {
+  it('answers what the rows hold, authors as first names: the base, then the pages', async () => {
     const { body } = await data()
-    const expected = seedResponse(toSeed(exampleSeedInput(), AUTHORS), new Map(Object.entries(USERS)), body.today)
-    expect(body.tables).toEqual(expected.tables)
+    const expected = seedPages(toSeed(exampleSeedInput(), AUTHORS), new Map(Object.entries(USERS)), body.today)
+    expect(body.tables).toEqual(expected.base.tables)
+    expect(body.operationPages).toBe(1)
+    expect((await page(0)).body).toEqual(expected.pages[0])
     expect(body.schemaVersion).toBe(1)
     expect(body.apiVersion).toBe(API_VERSION)
     expect(body.environment).toBe('local')
@@ -68,19 +90,19 @@ describe('GET /api/data, example month (spec 1.3)', () => {
   it('never sends an address', async () => {
     const { text } = await data()
     expect(text).not.toContain('@')
+    expect((await page(0)).text).not.toContain('@')
   })
 
   it('reads "?" for an author no longer allowed', async () => {
-    const { body } = await data(apiHeaders, env({ ALLOWED_USERS: JSON.stringify({ [P1]: 'Alice' }) }))
-    const app = decodeData(body)
+    const app = decodeData(await loadAll(apiHeaders, env({ ALLOWED_USERS: JSON.stringify({ [P1]: 'Alice' }) })))
     const op2 = app.operations.find((o) => o.id === 2)
     expect(op2?.createdBy).toBe('Alice')
     expect(op2?.updatedBy).toBe('?')
   })
 
   it('gives back the results of spec 1.3 once decoded', async () => {
-    const { body } = await data()
-    const decoded = decodeData(body)
+    const decoded = decodeData(await loadAll())
+    expect(isConsistent(decoded)).toBe(true)
     expect(decoded.operations.find((o) => o.id === 2)?.updatedBy).toBe('Bob')
     expect(decoded.balanceChecks).toHaveLength(1)
     const ledger = new Ledger(budgetData(decoded)!)
@@ -104,12 +126,23 @@ describe('GET /api/data, example month (spec 1.3)', () => {
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff')
   })
 
-  it('is refused while a restore runs (spec 4.3)', async () => {
+  it('is refused while a restore runs (spec 4.3), pages too', async () => {
     await t.db.prepare('UPDATE meta SET restore_in_progress = 1').run()
     const res = await get('/api/data')
+    const res2 = await get('/api/data/operations/0')
     await t.db.prepare('UPDATE meta SET restore_in_progress = 0').run()
-    expect(res.status).toBe(503)
-    expect(await res.json()).toEqual({ error: 'restore_in_progress' })
+    for (const r of [res, res2]) {
+      expect(r.status).toBe(503)
+      expect(await r.json()).toEqual({ error: 'restore_in_progress' })
+    }
+  })
+
+  it('gives an empty page beyond the last one, and refuses a page that is not a number', async () => {
+    expect((await page(7)).body).toEqual({ page: 7, tables: { operation: [], operation_part: [] } })
+    for (const bad of ['-1', '1.5', 'x', '1234567']) {
+      const res = await get(`/api/data/operations/${bad}`)
+      expect(res.status).toBe(400)
+    }
   })
 })
 
@@ -118,7 +151,8 @@ describe('GET /api/data, empty database', () => {
 
   it('reads, without an opening balance: the app is not set up yet', async () => {
     const { body } = await data()
-    const decoded = decodeData(body)
+    expect(body.operationPages).toBe(0)
+    const decoded = decodeData(assemble(body, []))
     expect(decoded.openingBalance).toBeNull()
     expect(budgetData(decoded)).toBeNull()
     expect(decoded.operations).toEqual([])
@@ -229,18 +263,28 @@ describe('three and ten years of fictitious data (lot 3 criterion)', () => {
     await t.reset()
     await runSql(t.db, seedSql(toSeed(threeYearsSeedInput(), AUTHORS)))
     const { text, body } = await data()
-    const size = new TextEncoder().encode(text).length
-    const decoded = decodeData(body)
+    expect(body.operationPages).toBe(6)
+    const sizes = [text.length]
+    for (let k = 0; k < body.operationPages; k++) {
+      const p = await page(k)
+      expect(p.body.tables.operation.length).toBeLessThanOrEqual(OPERATIONS_PER_PAGE)
+      sizes.push(p.text.length)
+    }
+    const decoded = decodeData(await loadAll())
     expect(decoded.operations.length).toBeGreaterThan(5500)
+    expect(isConsistent(decoded)).toBe(true)
     expect(budgetData(decoded)).not.toBeNull()
-    console.info(`3 ans : ${decoded.operations.length} opérations, ${decoded.parts.length} parts, ${(size / 1e6).toFixed(2)} Mo`)
+    // No answer carries more than a page of operations (about a sixth of the whole).
+    expect(Math.max(...sizes)).toBeLessThan(450_000)
+    console.info(`3 ans : ${decoded.operations.length} opérations ; réponses : ${sizes.map((n) => (n / 1e6).toFixed(2)).join(', ')} Mo`)
   }, 60_000)
 
   it('reads ten years', async () => {
     await t.reset()
     await runSql(t.db, seedSql(toSeed(threeYearsSeedInput({ months: 120 }), AUTHORS)))
-    const { body } = await data()
-    expect(decodeData(body).operations.length).toBeGreaterThan(18000)
+    const decoded = decodeData(await loadAll())
+    expect(decoded.operations.length).toBeGreaterThan(18000)
+    expect(isConsistent(decoded)).toBe(true)
   }, 120_000)
 
   it('keeps each chunk below D1\'s 2 MB per string, even with the longest, worst-escaped texts', async () => {
@@ -263,7 +307,6 @@ describe('three and ten years of fictitious data (lot 3 criterion)', () => {
       expect(bytes).toBeGreaterThan(1_500_000)
       expect(bytes).toBeLessThan(2_000_000)
     }
-    const { body } = await data()
-    expect(body.tables.operation).toHaveLength(CHUNK_ROWS * 2)
+    expect((await page(0)).body.tables.operation).toHaveLength(CHUNK_ROWS * 2)
   }, 60_000)
 })

@@ -4,7 +4,7 @@
  * Compatibility number of the exchange. It goes up only when the exchange changes in a way an
  * older app cannot handle; the Worker then refuses the older app, which reloads (spec 4.8).
  */
-export const API_VERSION = 1
+export const API_VERSION = 2
 
 /** Sent by the app with every API request. */
 export const API_VERSION_HEADER = 'X-Plootos-Api'
@@ -90,7 +90,32 @@ export type Cell = string | number | null
 /** One row: its cells in the order of TABLE_COLUMNS. */
 export type Row = Cell[]
 
-/** GET /api/data: everything, loaded at start (spec 4.3). */
+/** Operations and their parts are read by pages (GET /api/data/operations/:page). */
+export const PAGED_TABLES = ['operation', 'operation_part'] as const satisfies readonly TableName[]
+export type PagedTable = (typeof PAGED_TABLES)[number]
+export type BaseTable = Exclude<TableName, PagedTable>
+export const BASE_TABLES = TABLE_NAMES.filter((t) => !(PAGED_TABLES as readonly string[]).includes(t)) as BaseTable[]
+
+/**
+ * Operations per page: page k holds the operations whose id is in [k x 1000 + 1, (k + 1) x 1000],
+ * with their parts. The Worker's cost per request stays the same whatever the years of data
+ * (measured in staging: reading three years in one request cost 15 to 18 ms of CPU).
+ */
+export const OPERATIONS_PER_PAGE = 1000
+
+/** GET /api/data: everything but the operations, and how many pages of operations to read. */
+export interface BaseResponse extends Omit<DataResponse, 'tables'> {
+  tables: { [T in BaseTable]: Row[] }
+  operationPages: number
+}
+
+/** GET /api/data/operations/:page */
+export interface OperationsPageResponse {
+  page: number
+  tables: { [T in PagedTable]: Row[] }
+}
+
+/** Everything, once the base and every page are read (spec 4.3: all is loaded at start). */
 export interface DataResponse {
   apiVersion: number
   environment: Environment

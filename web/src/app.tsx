@@ -51,7 +51,7 @@ function Diagnostics({ data }: { data: Loaded }) {
   const t = data.timings
   return (
     <p class="diagnostics">
-      {data.app.operations.length} opérations, {(data.bytes / 1e6).toFixed(1)} Mo · chargé en {ms(t.totalMs)} (réseau{' '}
+      {data.app.operations.length} opérations, {(data.bytes / 1e6).toFixed(1)} Mo en {data.requests} requêtes · chargé en {ms(t.totalMs)} (réseau{' '}
       {ms(t.networkMs)}, lecture {ms(t.readMs)}, calcul {ms(t.computeMs)}) · aujourd'hui : {frenchDate(data.today)}
       {data.todaySimulated ? ' (date simulée)' : ''} · {data.environment === 'staging' ? 'recette' : 'local'}
     </p>

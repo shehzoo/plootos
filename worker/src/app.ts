@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import type { ApiError, MeResponse } from '../../shared/src/api'
 import { accessAuth, type AccessAuthOptions } from './auth'
-import { readAll, RestoreInProgressError } from './read'
+import { readBase, readOperationsPage, RestoreInProgressError } from './read'
 import { apiVersionCheck, securityHeaders, writeChecks } from './security'
 import { serverToday } from './today'
 import type { AppEnv } from './types'
@@ -19,14 +19,21 @@ export function createApp(options: AccessAuthOptions = {}) {
     return c.json(body)
   })
 
+  const json = (body: string) => ({ body, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
+
   app.get('/api/data', async (c) => {
-    try {
-      const body = await readAll(c.env, c.get('users'), serverToday(c))
-      return c.body(body, 200, { 'Content-Type': 'application/json; charset=utf-8' })
-    } catch (e) {
-      if (e instanceof RestoreInProgressError) return c.json({ error: 'restore_in_progress' } satisfies ApiError, 503)
-      throw e
+    const { body, headers } = json(await readBase(c.env, c.get('users'), serverToday(c)))
+    return c.body(body, 200, headers)
+  })
+
+  app.get('/api/data/operations/:page', async (c) => {
+    const raw = c.req.param('page')
+    const page = Number(raw)
+    if (!/^\d{1,6}$/.test(raw) || !Number.isSafeInteger(page)) {
+      return c.json({ error: 'bad_request', reason: 'page' } satisfies ApiError, 400)
     }
+    const { body, headers } = json(await readOperationsPage(c.env, c.get('users'), page))
+    return c.body(body, 200, headers)
   })
 
   app.all('/api/*', (c) => c.json({ error: 'not_found' } satisfies ApiError, 404))
@@ -46,6 +53,8 @@ export function createApp(options: AccessAuthOptions = {}) {
 
   // Logs hold fixed codes only: never an amount, a label or the content of a request (spec 4.8).
   app.onError((e, c) => {
+    // While a restore runs, no read nor write (spec 4.3).
+    if (e instanceof RestoreInProgressError) return c.json({ error: 'restore_in_progress' } satisfies ApiError, 503)
     console.error(JSON.stringify({ event: 'error', method: c.req.method, route: c.req.routePath, kind: e?.constructor?.name }))
     const body: ApiError = { error: 'server_error' }
     return c.json(body, 500)
