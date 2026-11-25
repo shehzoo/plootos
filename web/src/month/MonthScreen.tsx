@@ -10,12 +10,16 @@
 // on a computer; an operation in the detail of a category opens its record.
 //
 // Lot 10: « Importer relevé bancaire (XLSX) » on a computer (spec 3.0).
+//
+// Lot 11: on a computer, the reminder to export on the current month (spec 3.8).
 
 import { Fragment, type ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
+import { exportDue } from '../../../shared/src/backup'
 import { lastDayOfMonth, addMonths, monthOf, type Id, type Month } from '../../../shared/src/engine'
+import { useExport } from '../budget/backup'
 import { useFoldedSections } from '../display'
-import { count, euros, eurosOrMinus, monthName, monthTitle, shortDate, signedEuros } from '../format'
+import { count, euros, eurosOrMinus, fullDate, monthName, monthTitle, shortDate, signedEuros } from '../format'
 import { Icon } from '../icons'
 import { OverrideDialog } from '../budget/LineEditor'
 import { overrideTarget } from '../budget/lines'
@@ -297,6 +301,38 @@ function UncategorizedBanner({ month, data, narrow }: { month: Month; data: Band
     )
   }
   return null
+}
+
+/**
+ * More than a month since the last export (or since setup, without any): a banner and its
+ * button, on the current month, on a computer (spec 3.8, DECISIONS.md 2026-11-25).
+ */
+function ExportReminder({ ctx, refresh }: { ctx: MonthContext; refresh: () => Promise<void> }) {
+  const { busy, message, run } = useExport(refresh)
+  const opening = ctx.app.openingBalance
+  const since = ctx.lastExportAt === undefined || !opening ? null : exportDue(ctx.lastExportAt, opening.createdAt, ctx.today)
+  if (since === null && !message) return null
+  if (since === null) {
+    return (
+      <div class="pl-banner body month-banner" role="status">
+        <span>{message?.text}</span>
+      </div>
+    )
+  }
+  return (
+    <div class={`pl-banner body month-banner${message?.kind === 'error' ? ' pl-banner--over' : ''}`} role="status">
+      <span>
+        {message?.kind === 'error'
+          ? message.text
+          : ctx.lastExportAt
+            ? `Le dernier export date du ${fullDate(since)} : plus d'un mois.`
+            : `Aucun export depuis la mise en service (${fullDate(since)}), il y a plus d'un mois.`}
+      </span>
+      <button type="button" onClick={run} disabled={busy}>
+        {busy ? 'Export…' : 'Exporter'}
+      </button>
+    </div>
+  )
 }
 
 // Computer: BudgetTable and DetailPanel
@@ -666,6 +702,7 @@ export function MonthScreen({ ctx, place, narrow, refresh }: { ctx: MonthContext
   return (
     <div class="month">
       <MonthBand month={month} kind={kind} bounds={bounds} data={data} narrow={false} />
+      {kind === 'current' && <ExportReminder ctx={ctx} refresh={refresh} />}
       <UncategorizedBanner month={month} data={data} narrow={false} />
       <div class="month__body">
         {empty || (

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import type { MeResponse } from '../../shared/src/api'
 import { isIsoDate } from '../../shared/src/engine'
-import { apiGet, AppOutdatedError, ForbiddenError, OfflineError, SessionExpiredError, SIMULATED_TODAY_KEY } from './api'
+import { apiGet, AppOutdatedError, ForbiddenError, OfflineError, RestoreInProgressError, SessionExpiredError, SIMULATED_TODAY_KEY } from './api'
 import { loadData, type Loaded } from './data'
 import logoDark from './design/logo/plootos-mot-clair.svg'
 import logoLight from './design/logo/plootos-mot-sauge.svg'
@@ -22,6 +22,8 @@ type Load =
   | { state: 'offline' }
   | { state: 'forbidden' }
   | { state: 'expired' }
+  /** A restore started and not finished: the server refuses everything (spec 3.8). */
+  | { state: 'restore' }
   | { state: 'error' }
 
 /** SideNav on a computer, BottomNav on a phone (design system). */
@@ -151,6 +153,7 @@ export function App() {
       else if (e instanceof ForbiddenError) setLoad({ state: 'forbidden' })
       else if (e instanceof SessionExpiredError) setLoad({ state: 'expired' })
       else if (e instanceof AppOutdatedError) setLoad({ state: 'loading' })
+      else if (e instanceof RestoreInProgressError) setLoad({ state: 'restore' })
       else setLoad({ state: 'error' })
     }
   }, [])
@@ -164,7 +167,14 @@ export function App() {
    * no blank page, what was typed stays. An error is thrown to the screen that wrote.
    */
   const refresh = useCallback(async () => {
-    const data = await loadData()
+    let data: Loaded
+    try {
+      data = await loadData()
+    } catch (e) {
+      // A restore left unfinished (here or on the other device): the app shows only that.
+      if (e instanceof RestoreInProgressError) setLoad({ state: 'restore' })
+      throw e
+    }
     setLoad((prev) => (prev.state === 'ready' ? { ...prev, data } : prev))
   }, [])
 
@@ -175,12 +185,14 @@ export function App() {
     return <Message title="Accès refusé" text="Cette adresse e-mail n'est pas autorisée." />
   if (load.state === 'expired')
     return <Message title="Connexion expirée" text="Recharge la page pour te reconnecter." retry={() => window.location.reload()} />
+  if (load.state === 'restore')
+    return <Message title="Restauration inachevée" text="Lancer l'action GitHub « Vider la base », puis recommencer la restauration." retry={fetchMe} />
   if (load.state === 'error')
     return <Message title="Erreur" text="Quelque chose n'a pas marché." retry={fetchMe} />
 
   const { data, me } = load
   const section = place.section
-  const ctx = data.ledger ? { ledger: data.ledger, app: data.app, today: data.today } : null
+  const ctx = data.ledger ? { ledger: data.ledger, app: data.app, today: data.today, lastExportAt: data.lastExportAt } : null
   return (
     <div class="shell">
       <Nav current={section} variant="side" firstName={me.firstName} />
@@ -210,7 +222,7 @@ export function App() {
         ) : (
           <>
             <main>
-              <SetupScreen today={data.today} narrow={narrow} refresh={refresh} />
+              <SetupScreen today={data.today} environment={data.environment} narrow={narrow} refresh={refresh} />
             </main>
           </>
         )}

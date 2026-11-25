@@ -63,14 +63,16 @@ export class WriteBatch {
   /**
    * @param author the address read from the verified Access token
    * @param now UTC timestamp of the write, the same for every row of the batch
+   * @param restoring only the lots of a restore are written while its marker is set
    */
   constructor(
     private readonly db: D1Database,
     private readonly author: string,
     readonly now: string = new Date().toISOString(),
+    restoring = false,
   ) {
-    // While a restore runs, every write is refused (spec 4.3).
-    this.guard('NOT EXISTS (SELECT 1 FROM meta WHERE restore_in_progress = 1)', [], 'restore_in_progress')
+    // While a restore runs, every other write is refused (spec 4.3).
+    if (!restoring) this.guard('NOT EXISTS (SELECT 1 FROM meta WHERE restore_in_progress = 1)', [], 'restore_in_progress')
   }
 
   /** The batch is written only if the condition (SQL, true or false) holds when it runs. */
@@ -192,6 +194,15 @@ export class WriteBatch {
         )
         .bind(this.now, this.author, this.now, ...params),
     )
+    return this
+  }
+
+  /**
+   * A statement written by this code (meta, the rows of a restore): never SQL from a request,
+   * values only as parameters.
+   */
+  statement(sql: string, params: unknown[] = []): this {
+    this.statements.push(this.db.prepare(sql).bind(...params))
     return this
   }
 

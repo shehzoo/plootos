@@ -4,6 +4,7 @@ import { catalog } from './catalog'
 import { imports } from './imports'
 import { lines } from './lines'
 import { operations } from './operations'
+import { restore } from './restore'
 import { accessAuth, type AccessAuthOptions } from './auth'
 import { readBase, readOperationsPage, RestoreInProgressError } from './read'
 import { apiVersionCheck, securityHeaders, writeChecks } from './security'
@@ -44,6 +45,7 @@ export function createApp(options: AccessAuthOptions = {}) {
   app.route('/', lines)
   app.route('/', operations)
   app.route('/', imports)
+  app.route('/', restore)
 
   app.all('/api/*', (c) => c.json({ error: 'not_found' } satisfies ApiError, 404))
 

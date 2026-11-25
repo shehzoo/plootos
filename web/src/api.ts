@@ -33,6 +33,16 @@ export class AppOutdatedError extends Error {
   }
 }
 
+/**
+ * A restore was started and not finished: the server refuses everything until the database is
+ * emptied by the GitHub action « Vider la base » (spec 3.8, 4.3).
+ */
+export class RestoreInProgressError extends Error {
+  constructor() {
+    super('restore_in_progress')
+  }
+}
+
 /** A write refused because an element changed meanwhile ("Modifié entre-temps", spec 4.3). */
 export class ConflictError extends Error {
   constructor(readonly changed: NonNullable<ApiError['changed']>) {
@@ -147,9 +157,9 @@ export async function apiGetText(path: string, deps: ApiDeps = browserDeps()): P
     handleExpiredSession(deps)
   }
   if (res.status === 403) throw new ForbiddenError()
-  if (res.status === 409 && (await res.clone().json().catch(() => null))?.error === 'app_outdated') {
-    handleOutdatedApp(deps)
-  }
+  const refusal = async () => ((await res.clone().json().catch(() => null)) as ApiError | null)?.error
+  if (res.status === 409 && (await refusal()) === 'app_outdated') handleOutdatedApp(deps)
+  if (res.status === 503 && (await refusal()) === 'restore_in_progress') throw new RestoreInProgressError()
   if (!res.ok) throw new Error(`http_${res.status}`)
 
   const type = res.headers.get('Content-Type') ?? ''

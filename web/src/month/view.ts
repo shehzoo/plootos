@@ -28,6 +28,8 @@ export interface MonthContext {
   app: AppData
   /** Paris time, or the simulated date (local and staging only). */
   today: IsoDate
+  /** UTC timestamp of the last export, null if none; left out, no reminder (spec 3.8). */
+  lastExportAt?: string | null
 }
 
 export interface MonthBounds {

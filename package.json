@@ -6,7 +6,7 @@
     "build": "vite build",
     "dev": "vite build && wrangler dev",
     "test": "vitest run",
-    "typecheck": "tsc -p worker && tsc -p web && tsc -p shared",
+    "typecheck": "tsc -p worker && tsc -p web && tsc -p shared && tsc -p integration",
     "check": "npm run typecheck && npm test && npm run build",
     "seed": "tsx scripts/seed.ts local",
     "design": "tsx scripts/design.ts"

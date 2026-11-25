@@ -1,7 +1,8 @@
 // Migration 0001: the tables of spec 4.5 and what the database itself guarantees.
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { TABLE_COLUMNS, TABLE_NAMES } from '../../shared/src/api'
+import { SCHEMA_VERSION, TABLE_COLUMNS, TABLE_NAMES } from '../../shared/src/api'
+import { EXPORT_MIGRATIONS } from '../../shared/src/backup'
 import { DROP_ORDER, INSERT_ORDER, seedSql, toSeed } from '../../shared/fixtures/seed'
 import { exampleSeedInput } from '../../shared/fixtures/example'
 import { migrationFiles, runSql, testDb, type TestDb } from './d1'
@@ -46,6 +47,21 @@ describe('tables', () => {
     const meta = await t.db.prepare('SELECT schema_version FROM meta').first<number>('schema_version')
     expect(meta).toBe(migrationFiles().length)
     expect(migrationFiles()[0]).toBe('0001_initial.sql')
+  })
+
+  it('gives the code the schema version of the migrations, and an export conversion for each (spec 3.8)', () => {
+    expect(SCHEMA_VERSION).toBe(migrationFiles().length)
+    for (let n = 1; n < SCHEMA_VERSION; n++) expect(EXPORT_MIGRATIONS[n], `export conversion ${n} -> ${n + 1}`).toBeTypeOf('function')
+  })
+
+  it('has no column the export would miss (spec 4.6: every table, every column)', async () => {
+    for (const table of TABLE_NAMES) {
+      const info = await t.db.prepare(`SELECT name FROM pragma_table_info('${table}')`).all<{ name: string }>()
+      const sent = new Set<string>(TABLE_COLUMNS[table])
+      // The opening balance is a single row, id 1, restored as such.
+      const missing = info.results.map((r) => r.name).filter((c) => !sent.has(c) && !(table === 'opening_balance' && c === 'id'))
+      expect(missing, table).toEqual([])
+    }
   })
 
   it('loads the example month', async () => {

@@ -1,0 +1,103 @@
+# « Restaurer à une date » (spec 4.6): brings the whole database back to a point of the last
+# 7 days (D1 Time Travel), for an error noticed in time (a wrong import, a bug), or to undo
+# « Vider la base ». Everything done after that point is lost. Launched by hand (« Run
+# workflow »), for staging (« recette ») or production, with the word RESTAURER typed in
+# « confirmation ». The point is a date and time of Paris (AAAA-MM-JJ HH:MM) or a bookmark
+# (given by « Vider la base » and by each deployment to production).
+# The migrations are applied again afterwards: a point older than a migration would leave the
+# database behind the code. The bookmark that undoes the restore is printed. Production: from
+# main only. Prints no data, only bookmarks.
+name: Restaurer à une date
+
+on:
+  workflow_dispatch:
+    inputs:
+      environnement:
+        description: Base à restaurer
+        type: choice
+        options: [recette, production]
+        default: recette
+      point:
+        description: Date et heure de Paris (AAAA-MM-JJ HH:MM), ou marque-page
+        type: string
+        required: true
+      confirmation:
+        description: Taper RESTAURER pour confirmer
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Vérifications
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Confirmation et point
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          POINT: ${{ inputs.point }}
+        run: |
+          npx tsx scripts/exploitation.ts confirm RESTAURER
+          npx tsx scripts/exploitation.ts point > /dev/null
+      - name: Branche
+        if: inputs.environnement == 'production' && github.ref != 'refs/heads/main'
+        run: |
+          echo "La production ne se restaure que depuis main. Rien n'a été touché."
+          exit 1
+
+  restore:
+    name: Restaurer à une date
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environnement == 'production' && 'production' || 'staging' }}
+    # Same group as the deployments of that environment, never cancelled: one waits for the other.
+    concurrency:
+      group: ${{ inputs.environnement == 'production' && 'production' || 'staging' }}
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_SEND_METRICS: 'false'
+      WRANGLER_ENV: ${{ inputs.environnement == 'production' && 'production' || 'staging' }}
+      NOM: ${{ inputs.environnement }}
+      POINT: ${{ inputs.point }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Restauration
+        run: |
+          OPTION=$(npx tsx scripts/exploitation.ts point)
+          npx wrangler d1 time-travel restore DB --env "$WRANGLER_ENV" --json "$OPTION" > "$RUNNER_TEMP/restore.json"
+          read -r BOOKMARK PREVIOUS < <(npx tsx scripts/exploitation.ts restored < "$RUNNER_TEMP/restore.json")
+          echo "BOOKMARK=$BOOKMARK" >> "$GITHUB_ENV"
+          echo "PREVIOUS=$PREVIOUS" >> "$GITHUB_ENV"
+          echo "Base ($NOM) restaurée au marque-page $BOOKMARK. Pour annuler : $PREVIOUS"
+      - name: Changements de schéma
+        run: npx wrangler d1 migrations apply DB --env "$WRANGLER_ENV" --remote
+      - name: Résumé
+        run: |
+          {
+            echo "## Base restaurée ($NOM)"
+            echo
+            echo "Point demandé : $POINT ; marque-page atteint : \`$BOOKMARK\`."
+            echo
+            echo "Recharger l'appli. Pour annuler cette restauration, dans les 7 jours : « Restaurer à une date », environnement $NOM, point :"
+            echo
+            echo "\`$PREVIOUS\`"
+          } >> "$GITHUB_STEP_SUMMARY"

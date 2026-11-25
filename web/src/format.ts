@@ -1,7 +1,7 @@
 // Writing of numbers and dates (DESIGN.md, « Écriture des nombres »): euros without decimals
 // when they are zero, a narrow no-break space between thousands, a no-break space before « € ».
 
-import type { IsoDate, Month } from '../../shared/src/engine'
+import { todayInParis, type IsoDate, type Month } from '../../shared/src/engine'
 
 const WHOLE = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 })
 const CENTS = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -67,6 +67,15 @@ export function shortDate(date: IsoDate): string {
 /** « 12/03/2027 » */
 export function fullDate(date: IsoDate): string {
   return `${shortDate(date)}/${date.slice(0, 4)}`
+}
+
+const PARIS_TIME = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+
+/** A UTC timestamp, in Paris time: « 15/03/2027 à 10 h 30 ». */
+export function dateTime(timestamp: string): string {
+  const at = new Date(timestamp)
+  const [h, m] = PARIS_TIME.format(at).split(':')
+  return `${fullDate(todayInParis(at))} à ${Number(h)}${NBSP}h${NBSP}${m}`
 }
 
 /** « 1 opération », « 3 opérations » */
