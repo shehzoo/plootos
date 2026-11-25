@@ -216,10 +216,11 @@ export interface RestoreLotRequest {
 
 /**
  * Most rows and bytes in one lot. Each lot is one request, which must stay within the 10 ms of
- * CPU of the free Worker (spec 4.9) and the 1 MB of a write; measured in staging.
+ * CPU of the free Worker (spec 4.9, objective 5 ms) and the 1 MB of a write. Measured in staging
+ * on three years: lots of 2,000 rows reached 15.6 ms; 500 rows is a quarter of that.
  */
-export const RESTORE_LOT_ROWS = 2000
-export const RESTORE_LOT_BYTES = 700_000
+export const RESTORE_LOT_ROWS = 500
+export const RESTORE_LOT_BYTES = 200_000
 
 /**
  * Cuts an export into lots: tables in RESTORE_ORDER, categories before subcategories, and the
