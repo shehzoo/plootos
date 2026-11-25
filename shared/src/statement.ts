@@ -84,6 +84,12 @@ export function cellCents(c: SheetCell | undefined): number | null {
     const n = Number(s)
     return Number.isFinite(n) ? Math.round(n * 100) : null
   }
+  // A number cell written with binary noise ('69.93000000000001'): the nearest cent, if that close.
+  if (/^[+-]?\d+\.\d{3,}$/.test(s)) {
+    const n = Number(s) * 100
+    const cents = Math.round(n)
+    return Math.abs(n - cents) < 1e-6 && Number.isSafeInteger(cents) ? cents : null
+  }
   // A comma is the decimal separator in French; a dot then only separates thousands.
   if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.')
   const m = /^([+-]?)(\d+)(?:\.(\d{1,2}))?$/.exec(s)
