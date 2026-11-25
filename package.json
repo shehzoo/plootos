@@ -8,7 +8,8 @@
     "test": "vitest run",
     "typecheck": "tsc -p worker && tsc -p web && tsc -p shared",
     "check": "npm run typecheck && npm test && npm run build",
-    "seed": "tsx scripts/seed.ts local"
+    "seed": "tsx scripts/seed.ts local",
+    "design": "tsx scripts/design.ts"
   },
   "dependencies": {
     "hono": "4.13.21",

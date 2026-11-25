@@ -1,28 +1,5 @@
-/* Minimal shell. The visual identity comes in lot 4 (direction artistique). */
-
-:root {
-  color-scheme: light dark;
-  --bg: #ffffff;
-  --fg: #1a1a1a;
-  --muted: #666666;
-  --line: #e3e3e3;
-  --accent: #1f4e5f;
-  --nav-bg: #f5f6f7;
-  font-family: system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--fg);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #15181a;
-    --fg: #eeeeee;
-    --muted: #a0a0a0;
-    --line: #2c3134;
-    --accent: #8cc6d9;
-    --nav-bg: #1d2124;
-  }
-}
+/* App shell, drawn with the design system (DESIGN.md; variables in design/tokens.css,
+   components in design/components.css). Screens come with their lots. */
 
 * {
   box-sizing: border-box;
@@ -37,58 +14,62 @@ body {
   min-height: 100vh;
 }
 
+/* Navigation: SideNav on a computer, BottomNav on a phone (design system). */
 .sidebar {
+  flex: none;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  width: 13rem;
-  padding: 1rem 0.75rem;
-  background: var(--nav-bg);
+  gap: var(--space-1);
+  width: var(--size-sidebar);
+  padding: var(--space-5) var(--space-3);
+  background: var(--surface-card);
   border-right: 1px solid var(--line);
 }
 
-.sidebar a,
-.bottombar a {
-  color: var(--fg);
-  text-decoration: none;
-  border-radius: 0.5rem;
+.sidebar .logo {
+  display: block;
+  height: 24px;
+  width: auto;
+  margin: 0 var(--space-3) var(--space-5);
 }
 
 .sidebar a {
-  padding: 0.6rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-s);
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: none;
 }
 
-.sidebar a[aria-current='page'],
-.bottombar a[aria-current='page'] {
-  color: var(--accent);
-  font-weight: 600;
+.sidebar a:hover {
+  background: var(--surface-sunk);
 }
 
 .sidebar a[aria-current='page'] {
-  background: var(--bg);
+  background: var(--surface-selected);
+  font-weight: 600;
 }
 
 .content {
   flex: 1;
   min-width: 0;
-  padding: 1rem 1.5rem;
+  padding: var(--space-6);
 }
 
 .topbar {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .topbar h1 {
   margin: 0;
-  font-size: 1.4rem;
 }
 
 .who,
 .placeholder {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
 .bottombar {
@@ -98,46 +79,64 @@ body {
 .message {
   max-width: 28rem;
   margin: 20vh auto 0;
-  padding: 0 1.5rem;
+  padding: 0 var(--space-6);
   text-align: center;
 }
 
-.message button {
-  font: inherit;
-  padding: 0.5rem 1rem;
+.message h1 {
+  margin: 0 0 var(--space-2);
 }
 
-/* Phone layout: narrow display, whatever the device (spec 4.2).
-   Threshold 760px, taken from the validated mock-ups; checked on both phones in lot 1. */
+/* Phone layout: narrow display, whatever the device (spec 4.2). The threshold is the design
+   system's size-phone-max (760px); a media query cannot read a variable, hence the number. */
 @media (max-width: 760px) {
   .sidebar {
     display: none;
   }
 
   .content {
-    padding: 1rem 1rem calc(4.5rem + env(safe-area-inset-bottom));
+    padding: var(--space-4) var(--space-4) calc(var(--size-bottom-nav) + env(safe-area-inset-bottom) + var(--space-4));
   }
 
   .bottombar {
     position: fixed;
     inset: auto 0 0 0;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    height: calc(var(--size-bottom-nav) + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
-    background: var(--nav-bg);
+    background: var(--surface-card);
     border-top: 1px solid var(--line);
   }
 
   .bottombar a {
-    padding: 0.9rem 0.25rem;
-    text-align: center;
-    font-size: 0.85rem;
+    position: relative;
+    display: grid;
+    place-items: center;
+    color: var(--ink-muted);
+    text-decoration: none;
+  }
+
+  .bottombar a[aria-current='page'] {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .bottombar a[aria-current='page']::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 28px;
+    height: 3px;
+    margin-left: -14px;
+    border-radius: 0 0 var(--radius-full) var(--radius-full);
+    background: var(--primary);
   }
 }
 
 /* Local development and staging only (lot 3 measures). */
 .diagnostics {
-  margin-top: 2rem;
-  font-size: 0.8rem;
-  color: var(--muted);
+  margin-top: var(--space-8);
+  color: var(--ink-muted);
 }
