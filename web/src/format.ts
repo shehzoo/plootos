@@ -73,3 +73,16 @@ export function fullDate(date: IsoDate): string {
 export function count(n: number, singular: string, plural = `${singular}s`): string {
   return `${n}${NBSP}${n > 1 ? plural : singular}`
 }
+
+/** Amount without the euro sign, for a grid of twelve months (« 1 200 »). */
+export function plainEuros(cents: number): string {
+  const abs = Math.abs(cents)
+  return abs % 100 === 0 ? WHOLE.format(abs / 100) : CENTS.format(abs / 100)
+}
+
+/** Signed amount without the euro sign: « +1 870 », « −90 », « 0 ». */
+export function signedPlainEuros(cents: number): string {
+  if (cents > 0) return `+${plainEuros(cents)}`
+  if (cents < 0) return `${MINUS}${plainEuros(cents)}`
+  return '0'
+}

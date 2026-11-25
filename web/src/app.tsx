@@ -6,7 +6,10 @@ import { loadData, type Loaded } from './data'
 import logoDark from './design/logo/plootos-mot-clair.svg'
 import logoLight from './design/logo/plootos-mot-sauge.svg'
 import { useNarrow } from './display'
+import { BudgetScreen } from './budget/BudgetScreen'
 import { MonthScreen } from './month/MonthScreen'
+import { OperationsScreen } from './operations/OperationsScreen'
+import { ProjectionScreen } from './projection/ProjectionScreen'
 import { navigate, SECTIONS, usePlace, type Section } from './router'
 
 type Load =
@@ -16,12 +19,6 @@ type Load =
   | { state: 'forbidden' }
   | { state: 'expired' }
   | { state: 'error' }
-
-const PLACEHOLDER: Record<Exclude<Section, 'mois'>, string> = {
-  operations: 'Les opérations arrivent au lot 6.',
-  projection: 'La projection arrive au lot 6.',
-  budget: 'Les lignes de budget arrivent au lot 6.',
-}
 
 /** SideNav on a computer, BottomNav on a phone (design system). */
 function Nav({ current, variant, firstName }: { current: Section; variant: 'side' | 'bottom'; firstName: string }) {
@@ -171,14 +168,17 @@ export function App() {
   const { data, me } = load
   const section = place.section
   const current = SECTIONS.find((s) => s.id === section)!
-  const isMonth = section === 'mois' && data.ledger !== null
+  const ctx = data.ledger ? { ledger: data.ledger, app: data.app, today: data.today } : null
   return (
     <div class="shell">
       <Nav current={section} variant="side" firstName={me.firstName} />
-      <div class={`content${isMonth ? ' content--month' : ''}`}>
-        {isMonth && data.ledger ? (
+      <div class={`content${ctx ? ' content--month' : ''}`}>
+        {ctx ? (
           <main>
-            <MonthScreen ctx={{ ledger: data.ledger, app: data.app, today: data.today }} place={place} narrow={narrow} />
+            {section === 'mois' && <MonthScreen ctx={ctx} place={place} narrow={narrow} />}
+            {section === 'operations' && <OperationsScreen ctx={ctx} place={place} narrow={narrow} />}
+            {section === 'projection' && <ProjectionScreen ctx={ctx} narrow={narrow} />}
+            {section === 'budget' && <BudgetScreen ctx={ctx} place={place} narrow={narrow} />}
           </main>
         ) : (
           <>
@@ -186,11 +186,7 @@ export function App() {
               <h1 class="title-l">{current.label}</h1>
             </header>
             <main>
-              <p class="placeholder">
-                {data.ledger
-                  ? PLACEHOLDER[section as Exclude<Section, 'mois'>]
-                  : 'Base vide : la mise en service arrive au lot 7.'}
-              </p>
+              <p class="placeholder">Base vide : la mise en service arrive au lot 7.</p>
             </main>
           </>
         )}
