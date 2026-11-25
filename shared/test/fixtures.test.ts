@@ -53,6 +53,7 @@ function checkInvariants({ data, balanceChecks }: SeedInput) {
 
 describe('example month data set', () => {
   it('respects the rules', () => checkInvariants(exampleSeedInput()))
+  it('respects the rules, entered up to 15/03', () => checkInvariants(exampleSeedInput({ enteredUpTo: '2027-03-15' })))
 })
 
 describe('three years data set', () => {

@@ -2,7 +2,7 @@
 //
 //   npx tsx scripts/seed.ts mask                 GitHub Actions: masks the allowed addresses
 //   npx tsx scripts/seed.ts drop                 SQL dropping every table, migration history included
-//   npx tsx scripts/seed.ts data <set> [month]   SQL of a data set: exemple, 3-ans [last month], vide
+//   npx tsx scripts/seed.ts data <set> [month]   SQL of a data set: exemple, exemple-15-03, 3-ans [last month], vide
 //   npx tsx scripts/seed.ts local <set> [month]  local database of `npm run dev`: drop, migrate, load
 //
 // Authors are the addresses of ALLOWED_USERS (person 1 is the first one): the staging secret in
@@ -17,7 +17,7 @@ import { dropSql, seedSql, toSeed, type Authors } from '../shared/fixtures/seed'
 import { threeYearsSeedInput } from '../shared/fixtures/three-years'
 import { isMonth } from '../shared/src/engine/dates'
 
-const SETS = ['exemple', '3-ans', 'vide'] as const
+const SETS = ['exemple', 'exemple-15-03', '3-ans', 'vide'] as const
 
 function fail(message: string): never {
   console.error(message)
@@ -46,6 +46,8 @@ function dataSql(set: string, month: string | undefined, raw: string | undefined
   if (month !== undefined && !isMonth(month)) fail('Month: YYYY-MM')
   if (set === 'vide') return '-- Empty data set: the migrations alone.\nSELECT 1;\n'
   if (set === 'exemple') return seedSql(toSeed(exampleSeedInput(), authors(raw)))
+  // The example month as entered on the evening of 15/03 (spec 1.3, U5).
+  if (set === 'exemple-15-03') return seedSql(toSeed(exampleSeedInput({ enteredUpTo: '2027-03-15' }), authors(raw)))
   if (set === '3-ans') return seedSql(toSeed(threeYearsSeedInput({ endMonth: month }), authors(raw)))
   return fail(`Data set: ${SETS.join(', ')}`)
 }

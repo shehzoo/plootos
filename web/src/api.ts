@@ -31,7 +31,7 @@ const RELOAD_MARK = 'plootos.sessionReloadAt'
 const RELOAD_GUARD_MS = 15_000
 /**
  * Simulated "today" ('YYYY-MM-DD'), a test setting kept on the device; the server honours it in
- * local development and staging only. The field to set it comes with the screens (lot 5).
+ * local development and staging only. Set by the field at the bottom of the page (lot 5).
  */
 export const SIMULATED_TODAY_KEY = 'plootos.simulatedToday'
 
