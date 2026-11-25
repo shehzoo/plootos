@@ -14,6 +14,7 @@ import { Icon } from '../icons'
 import { back, monthPath, navigate, type Place } from '../router'
 import {
   band,
+  checkText,
   clampMonth,
   detail,
   gapText,
@@ -24,7 +25,6 @@ import {
   sections,
   type Band,
   type CategoryRow,
-  type CheckInfo,
   type DetailView,
   type MonthBounds,
   type MonthContext,
@@ -44,13 +44,6 @@ const pathOf = (month: Month, bounds: MonthBounds, categoryId: Id | null = null)
   monthPath(month === bounds.current ? null : month, categoryId)
 
 // Small pieces
-
-function checkText(check: CheckInfo | null, none: string): string {
-  if (!check) return none
-  const result = check.gapCents === 0 ? 'identique' : `écart de ${euros(check.gapCents)}`
-  const since = check.operationsSince > 0 ? ` · ${count(check.operationsSince, 'opération entrée', 'opérations entrées')} depuis` : ''
-  return `Vérifié le ${shortDate(check.date)} : ${result}${since}`
-}
 
 function Stat({ label, value, sub, pill, narrow }: { label: string; value: string; sub?: string; pill?: string; narrow: boolean }) {
   return (

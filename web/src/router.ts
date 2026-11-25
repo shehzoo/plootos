@@ -18,25 +18,52 @@ export function sectionFromPath(pathname: string): Section {
 
 export interface Place {
   section: Section
-  /** /mois/AAAA-MM: a month other than the current one (null: the current month). */
+  /**
+   * /mois/AAAA-MM, /operations/AAAA-MM, /budget/AAAA-MM: a month other than the current one
+   * (null: the current month). On Budget, a computer shows the year of that month.
+   */
   month: Month | null
   /** ?categorie=ID: the detail of a category, open. */
   categoryId: number | null
+  /** ?operation=ID: the record of an operation, open (Opérations). */
+  operationId: number | null
+  /** ?ligne=ID: the record of a budget line, open (Budget). */
+  lineId: number | null
 }
 
 export function placeFromLocation(pathname: string, search: string): Place {
   const section = sectionFromPath(pathname)
   const parts = pathname.split('/').filter(Boolean)
-  const month = parts[0] === 'mois' && parts[1] && isMonth(parts[1]) ? parts[1] : null
-  const raw = new URLSearchParams(search).get('categorie')
-  const categoryId = raw !== null && /^\d+$/.test(raw) ? Number(raw) : null
-  return { section, month, categoryId }
+  const withMonth = parts[0] === 'mois' || parts[0] === 'operations' || parts[0] === 'budget'
+  const month = withMonth && parts[1] && isMonth(parts[1]) ? parts[1] : null
+  const params = new URLSearchParams(search)
+  const id = (name: string) => {
+    const raw = params.get(name)
+    return raw !== null && /^\d+$/.test(raw) ? Number(raw) : null
+  }
+  return { section, month, categoryId: id('categorie'), operationId: id('operation'), lineId: id('ligne') }
 }
 
 /** Path of a month screen: the current month is "/", another one "/mois/AAAA-MM". */
 export function monthPath(month: Month | null, categoryId: number | null = null): string {
   const base = month === null ? '/' : `/mois/${month}`
   return categoryId === null ? base : `${base}?categorie=${categoryId}`
+}
+
+/** Path of a screen with a month in it: the current month is the bare path. */
+function monthlyPath(base: string, month: Month | null, param: string, id: number | null): string {
+  const path = month === null ? base : `${base}/${month}`
+  return id === null ? path : `${path}?${param}=${id}`
+}
+
+/** Opérations: the month, and the operation open in its record. */
+export function operationsPath(month: Month | null, operationId: number | null = null): string {
+  return monthlyPath('/operations', month, 'operation', operationId)
+}
+
+/** Budget: the month (a computer shows its year), and the line open in its record. */
+export function budgetPath(month: Month | null, lineId: number | null = null): string {
+  return monthlyPath('/budget', month, 'ligne', lineId)
 }
 
 const PUSHED = 'plootos'

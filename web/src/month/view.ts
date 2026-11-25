@@ -19,7 +19,7 @@ import {
   type Rhythm,
 } from '../../../shared/src/engine'
 import type { AppData, BalanceCheck } from '../../../shared/src/wire'
-import { euros, eurosArePlural, MONTH_NAMES, monthName } from '../format'
+import { count, euros, eurosArePlural, MONTH_NAMES, monthName, shortDate } from '../format'
 
 export type MonthKind = 'current' | 'future' | 'closed'
 
@@ -359,14 +359,22 @@ function checkInfo(ctx: MonthContext, check: BalanceCheck | undefined): CheckInf
 }
 
 /** Latest balance check on or before a date, and from a date on if given. */
-function latestCheck(ctx: MonthContext, upTo: IsoDate, from?: IsoDate): CheckInfo | null {
+export function latestCheck(ctx: MonthContext, upTo: IsoDate, from?: IsoDate): CheckInfo | null {
   const candidates = ctx.app.balanceChecks
     .filter((c) => c.checkDate <= upTo && (from === undefined || c.checkDate >= from))
     .sort((a, b) => (a.checkDate < b.checkDate ? -1 : a.checkDate > b.checkDate ? 1 : a.id - b.id))
   return checkInfo(ctx, candidates[candidates.length - 1])
 }
 
-function isUncategorized(ledger: Ledger, o: Operation): boolean {
+/** « Vérifié le 31/03 : identique · 2 opérations entrées depuis » (months, projection). */
+export function checkText(check: CheckInfo | null, none: string): string {
+  if (!check) return none
+  const result = check.gapCents === 0 ? 'identique' : `écart de ${euros(check.gapCents)}`
+  const since = check.operationsSince > 0 ? ` · ${count(check.operationsSince, 'opération entrée', 'opérations entrées')} depuis` : ''
+  return `Vérifié le ${shortDate(check.date)} : ${result}${since}`
+}
+
+export function isUncategorized(ledger: Ledger, o: Operation): boolean {
   return ledger.partsOf(o.id).some((p) => p.categoryId === null)
 }
 

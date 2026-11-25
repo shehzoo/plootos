@@ -186,6 +186,185 @@ body {
   margin: 0;
 }
 
+/* Projection (3.5) */
+.projection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.projection__head {
+  display: flex;
+  flex-direction: column;
+  margin: 0 var(--space-1);
+}
+
+.projection__head h1 {
+  margin: 0;
+}
+
+.projection__chart {
+  width: auto;
+  border-left: 0;
+  border-radius: var(--radius-m);
+  padding: var(--space-3) var(--space-4);
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chart__grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.chart__zero {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+
+.chart__text {
+  fill: var(--ink-muted);
+}
+
+.chart__area {
+  fill: var(--progress);
+  fill-opacity: 0.16;
+}
+
+.chart__line {
+  fill: none;
+  stroke: var(--progress);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart__low {
+  fill: var(--surface-card);
+  stroke: var(--primary);
+  stroke-width: 2.5;
+}
+
+.projection-table {
+  max-width: 720px;
+}
+
+.projection-table .pl-row {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.2fr);
+}
+
+.projection-row {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border-width: 1px 0 0;
+  border-style: solid;
+  border-color: var(--line);
+  cursor: pointer;
+}
+
+/* Operations (3.2) */
+.ops-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.ops-head .pl-stat {
+  min-width: 260px;
+}
+
+.ops-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.ops-table .pl-row {
+  grid-template-columns: 56px minmax(0, 1.3fr) minmax(0, 1.6fr) 96px;
+}
+
+.ops-later {
+  margin: var(--space-3) var(--space-4);
+}
+
+.ops-record__sub {
+  display: block;
+}
+
+.ops-record__bank {
+  overflow-wrap: anywhere;
+}
+
+/* Budget lines (3.6) */
+.budget-scroll {
+  overflow-x: auto;
+}
+
+.budget-grid {
+  min-width: 940px;
+}
+
+.budget-grid .pl-row {
+  grid-template-columns: minmax(180px, 1.8fr) repeat(12, minmax(46px, 1fr));
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.budget-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.budget-name small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.budget-past {
+  color: var(--ink-muted);
+}
+
+.budget-over {
+  font-weight: 700;
+}
+
+.budget-total {
+  border-top: 1px solid var(--line-strong);
+}
+
+.budget-sechead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.budget-kv {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.budget-kv__wrap {
+  white-space: normal;
+}
+
 /* Local development and staging only: measures and the simulated date. */
 .diagnostics {
   margin-top: var(--space-8);
@@ -221,6 +400,42 @@ body {
 
   .content--month .diagnostics {
     padding: 0 var(--space-4);
+  }
+
+  /* Phone: the band touches the edges; what follows keeps the margins of the page. */
+  .projection {
+    gap: 0;
+  }
+
+  .projection .month-banner,
+  .projection__chart,
+  .projection-table {
+    margin: var(--space-4) var(--space-4) 0;
+  }
+
+  .projection-table {
+    max-width: none;
+  }
+
+  .projection-table .pl-row {
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .projection-table .pl-row--head span {
+    white-space: normal;
+  }
+
+  .projection__chart {
+    padding: var(--space-2);
+  }
+
+  .ops-filters {
+    padding: var(--space-4) var(--space-4) 0;
+  }
+
+  .budget-sechead {
+    min-height: var(--size-target);
   }
 
   .shell__bottom {
