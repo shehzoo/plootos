@@ -36,6 +36,10 @@ export interface Place {
   lineId: number | null
   /** ?nouvelle or ?nouvelle=ID: the panel of a new budget line, its category chosen (Budget, computer). */
   newLine: { categoryId: number | null } | null
+  /** /operations/categoriser: screen 3.3, all the operations to categorize (computer). */
+  categorize: boolean
+  /** ?ajout on Mois or Opérations: the manual entry is open (spec 3.2, lot 9). */
+  adding: boolean
 }
 
 export function placeFromLocation(pathname: string, search: string): Place {
@@ -50,7 +54,23 @@ export function placeFromLocation(pathname: string, search: string): Place {
   }
   const tab: BudgetTab = section === 'budget' && (parts[1] === 'categories' || parts[1] === 'donnees') ? parts[1] : 'lignes'
   const newLine = section === 'budget' && tab === 'lignes' && params.has('nouvelle') ? { categoryId: id('nouvelle') } : null
-  return { section, tab, month, categoryId: id('categorie'), operationId: id('operation'), lineId: id('ligne'), newLine }
+  const categorize = section === 'operations' && parts[1] === 'categoriser'
+  const adding = (section === 'mois' || section === 'operations') && !categorize && params.has('ajout')
+  return { section, tab, month, categoryId: id('categorie'), operationId: id('operation'), lineId: id('ligne'), newLine, categorize, adding }
+}
+
+/** Screen 3.3, Catégoriser (computer). */
+export const CATEGORIZE_PATH = '/operations/categoriser'
+
+/** The same screen, its detail closed, with the manual entry open: a phone's back button closes it. */
+export const addingPath = (pathname: string) => `${pathname}?ajout`
+
+/** The screen under the manual entry. */
+export function withoutAdding(pathname: string, search: string): string {
+  const params = new URLSearchParams(search)
+  params.delete('ajout')
+  const rest = params.toString()
+  return rest ? `${pathname}?${rest}` : pathname
 }
 
 /** Path of a month screen: the current month is "/", another one "/mois/AAAA-MM". */

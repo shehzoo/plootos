@@ -4,19 +4,22 @@
 //
 // Lot 8: in the detail of a category, a line's name opens it in Budget; on a computer,
 // « Surcharger ce mois » (current or later month) and, for an off-budget category of a closed
-// month, « Ajouter une ligne de budget » (DECISIONS.md, 2026-11-25). Actions of later lots
-// (import, manual entry and the + button, categorize, check the balance, links to operations)
-// stay hidden until their lot.
+// month, « Ajouter une ligne de budget » (DECISIONS.md, 2026-11-25).
+//
+// Lot 9: « + Ajout manuel » (the + button on a phone), except on a future month; « Catégoriser »
+// on a computer; an operation in the detail of a category opens its record. Import and balance
+// check (lot 10) stay hidden until then.
 
 import { Fragment, type ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
-import { lastDayOfMonth, addMonths, type Id, type Month } from '../../../shared/src/engine'
+import { lastDayOfMonth, addMonths, monthOf, type Id, type Month } from '../../../shared/src/engine'
 import { useFoldedSections } from '../display'
 import { count, euros, eurosOrMinus, monthName, monthTitle, shortDate, signedEuros } from '../format'
 import { Icon } from '../icons'
 import { OverrideDialog } from '../budget/LineEditor'
 import { overrideTarget } from '../budget/lines'
-import { back, budgetPath, monthPath, navigate, newLinePath, type Place } from '../router'
+import { AddButton } from '../operations/OperationsScreen'
+import { addingPath, back, budgetPath, CATEGORIZE_PATH, monthPath, navigate, newLinePath, operationsPath, type Place } from '../router'
 import {
   band,
   checkText,
@@ -50,7 +53,7 @@ const pathOf = (month: Month, bounds: MonthBounds, categoryId: Id | null = null)
 
 // Small pieces
 
-function Stat({ label, value, sub, pill, narrow }: { label: string; value: string; sub?: string; pill?: string; narrow: boolean }) {
+function Stat({ label, value, sub, pill, narrow, action }: { label: string; value: string; sub?: string; pill?: string; narrow: boolean; action?: ComponentChildren }) {
   return (
     <div class="pl-stat">
       <span class="pl-stat__k label">
@@ -64,6 +67,7 @@ function Stat({ label, value, sub, pill, narrow }: { label: string; value: strin
       </span>
       <span class={`pl-stat__v ${narrow ? 'amount-l' : 'amount-xl'}`}>{value}</span>
       {sub && <span class="pl-stat__s caption">{sub}</span>}
+      {action}
     </div>
   )
 }
@@ -189,7 +193,13 @@ function MonthBand(props: {
       const n = data.uncategorizedCount
       const m = data.monthUncategorizedCount
       const sub = n === 0 ? 'Tout est catégorisé' : m === n ? 'Ce mois-ci' : m === 0 ? "Dans d'autres mois" : `Dont ${m} ce mois-ci`
-      stats.push(<Stat key="todo" label="À catégoriser" value={String(n)} sub={sub} narrow={narrow} />)
+      const action =
+        n > 0 ? (
+          <button type="button" class="pl-band__link label" onClick={() => navigate(CATEGORIZE_PATH)}>
+            Catégoriser
+          </button>
+        ) : undefined
+      stats.push(<Stat key="todo" label="À catégoriser" value={String(n)} sub={sub} narrow={narrow} action={action} />)
     }
   } else if (data.kind === 'future') {
     stats.push(
@@ -232,11 +242,19 @@ function MonthBand(props: {
             <Icon name="chevron-droite" />
           </button>
         </div>
-        {kind !== 'current' && !narrow && (
+        {!narrow && (
           <div class="pl-actions">
-            <button type="button" class="pl-btn label" onClick={() => go(bounds.current)}>
-              Mois en cours
-            </button>
+            {kind !== 'current' && (
+              <button type="button" class="pl-btn label" onClick={() => go(bounds.current)}>
+                Mois en cours
+              </button>
+            )}
+            {kind !== 'future' && (
+              <button type="button" class="pl-btn pl-btn--primary label" onClick={() => navigate(addingPath(window.location.pathname))}>
+                <Icon name="plus" />
+                Ajout manuel
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -253,6 +271,11 @@ function UncategorizedBanner({ month, data, narrow }: { month: Month; data: Band
         <span>
           {count(n, 'opération')} de {monthName(month)} {n > 1 ? 'sont' : 'est'} à catégoriser : le réel est incomplet.
         </span>
+        {!narrow && (
+          <button type="button" onClick={() => navigate(CATEGORIZE_PATH)}>
+            Catégoriser
+          </button>
+        )}
       </div>
     )
   }
@@ -477,7 +500,7 @@ function DetailContent(props: { view: DetailView; month: Month; kind: MonthKind;
           <h3 class="title-s">Opérations ({view.operations.length})</h3>
           {view.operations.length === 0 && <p class="caption pl-muted detail-note">Aucune opération ce mois-ci.</p>}
           {view.operations.map((o) => (
-            <div key={o.id} class="pl-op table">
+            <button type="button" key={o.id} class="pl-op table op-button" onClick={() => navigate(operationsPath(monthOf(o.valueDate) === props.bounds.current ? null : monthOf(o.valueDate), o.id))}>
               <span class="op-label">
                 <span class="op-label__line" title={o.label}>
                   <span class="pl-muted">{shortDate(o.valueDate)}</span> {o.label}
@@ -485,7 +508,7 @@ function DetailContent(props: { view: DetailView; month: Month; kind: MonthKind;
                 {o.caption && <small class="caption">{o.caption}</small>}
               </span>
               <span class="pl-num">{signedEuros(o.amountCents)}</span>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -630,6 +653,7 @@ export function MonthScreen({ ctx, place, narrow, refresh }: { ctx: MonthContext
         <MonthBand month={month} kind={kind} bounds={bounds} data={data} narrow />
         <UncategorizedBanner month={month} data={data} narrow />
         {empty || <PhoneList sections={list} kind={kind} folded={folded} toggle={toggle} open={open} />}
+        {kind !== 'future' && <AddButton />}
       </div>
     )
   }

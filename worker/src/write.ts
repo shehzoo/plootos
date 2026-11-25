@@ -132,6 +132,15 @@ export class WriteBatch {
   }
 
   /**
+   * Erases a part of an operation: the only row ever erased. A part has no history of its own;
+   * its operation keeps who changed it and when (DECISIONS.md, 2026-11-25).
+   */
+  erasePart(id: number): this {
+    this.statements.push(this.db.prepare('DELETE FROM operation_part WHERE id = ?').bind(id))
+    return this
+  }
+
+  /**
    * Archives, in one statement, the rows of a table that are not archived yet and match the
    * condition (e.g. the categories of an archived section). Only sections and categories.
    */

@@ -671,6 +671,276 @@ body {
   width: auto;
 }
 
+/* Lot 9: manual entry, record of an operation, Catégoriser (3.2, 3.3). Components to carry to
+   the design system's artifact: CategoryField (catfield-*), the manual entry rows and cards
+   (entry-*), the split window (split-*), the Catégoriser table (todo-*), the band's link. */
+.pl-band__link {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: 0;
+  font: inherit;
+  color: var(--on-band);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.ops-head__actions {
+  margin-left: auto;
+}
+
+.ops-categorize {
+  margin-left: auto;
+}
+
+.fab {
+  position: fixed;
+  right: var(--space-4);
+  bottom: calc(var(--size-bottom-nav) + env(safe-area-inset-bottom) + var(--space-4));
+  z-index: 2;
+}
+
+.catfield {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.catfield__box {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.catfield__box input {
+  text-align: left;
+}
+
+.catfield--sugg input {
+  font-style: italic;
+}
+
+.catfield__list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: 420px;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  background: var(--surface-card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-float);
+}
+
+.catfield__opt {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+}
+
+.catfield__opt[aria-selected='true'] {
+  background: var(--surface-selected);
+}
+
+.catfield__none {
+  padding: var(--space-2) var(--space-3);
+}
+
+.entry-dialog {
+  width: min(980px, calc(100vw - var(--space-8)));
+}
+
+.entry-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.entry-row {
+  display: grid;
+  grid-template-columns: 130px 170px minmax(200px, 1.2fr) minmax(160px, 1fr);
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.entry-row .pl-input,
+.split-row .pl-input,
+.entry-card .pl-input,
+.record-form .pl-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.entry-note {
+  display: block;
+  margin-top: var(--space-1);
+}
+
+.entry-dup {
+  color: var(--warn);
+}
+
+.entry-in input {
+  color: var(--primary);
+}
+
+.entry-date input {
+  text-align: left;
+}
+
+.entry-total {
+  margin-right: auto;
+}
+
+.entry-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.entry-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.entry-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.entry-card {
+  width: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.entry-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.entry-page__foot {
+  position: sticky;
+  bottom: calc(var(--size-bottom-nav) + env(safe-area-inset-bottom));
+  padding: var(--space-3) 0;
+  background: var(--surface-page);
+}
+
+.split-dialog {
+  width: min(600px, calc(100vw - var(--space-8)));
+}
+
+.split-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.split-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 80px;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.split-add {
+  align-self: flex-start;
+}
+
+.split-status {
+  margin-right: auto;
+}
+
+.record-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.record-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.record-delete--confirm {
+  color: var(--over);
+  border-color: var(--over);
+}
+
+.todo-head {
+  align-items: flex-end;
+}
+
+.todo-back {
+  align-self: flex-start;
+  margin-left: calc(var(--space-2) * -1);
+}
+
+.todo-bulk {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-selected);
+  border-radius: var(--radius-m);
+}
+
+.todo-bulk .catfield {
+  width: 320px;
+}
+
+.todo-table {
+  overflow: visible;
+}
+
+.todo-table .pl-row {
+  grid-template-columns: 24px 56px minmax(0, 1.4fr) 96px minmax(180px, 1.2fr) minmax(120px, 1fr) 96px;
+}
+
+.todo-month {
+  display: block;
+}
+
+.todo-row--checked {
+  background: var(--surface-selected);
+}
+
+.todo-check {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.todo-split {
+  overflow-wrap: anywhere;
+}
+
+.todo-foot {
+  position: sticky;
+  bottom: 0;
+  justify-content: flex-end;
+  padding: var(--space-3) 0;
+  background: var(--surface-page);
+}
+
 /* Phone layout: narrow display, whatever the device (spec 4.2). The threshold is the design
    system's size-phone-max (760px); a media query cannot read a variable, hence the number. */
 @media (max-width: 760px) {

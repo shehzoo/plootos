@@ -97,6 +97,30 @@ export function ruleText(code: string): string {
       return "Cet élément n'existe plus : les données ont été rechargées."
     case 'bad_request':
       return 'Valeur refusée.'
+    // Operations (lot 9)
+    case 'duplicate_unconfirmed':
+      return "Une opération de même montant et même date de valeur vient d'apparaître : vérifie, puis confirme."
+    case 'value_date_too_early':
+      return 'La date de valeur doit suivre celle du solde initial.'
+    case 'value_date_too_far':
+      return 'Date de valeur trop lointaine.'
+    case 'category_not_choosable':
+      return "Cette catégorie n'est plus choisissable (archivée, ou elle a des sous-catégories) : les données ont été rechargées."
+    case 'parts_sum':
+    case 'part_sign':
+    case 'no_parts':
+    case 'too_many_parts':
+      return 'La répartition ne tombe pas juste.'
+    case 'part_uncategorized':
+      return 'Chaque part a une catégorie.'
+    case 'uncategorize_refused':
+      return "Une opération catégorisée ne revient pas « à catégoriser »."
+    case 'bank_fields':
+      return "Les champs de la banque d'une opération importée ne changent pas."
+    case 'not_manual':
+      return 'Seul un ajout manuel peut être supprimé.'
+    case 'operation_archived':
+      return 'Cette opération a été supprimée : les données ont été rechargées.'
     default:
       return lineErrorText(code) || 'Écriture refusée.'
   }
