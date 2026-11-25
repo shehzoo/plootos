@@ -97,6 +97,11 @@ export function ruleText(code: string): string {
       return "Cet élément n'existe plus : les données ont été rechargées."
     case 'bad_request':
       return 'Valeur refusée.'
+    // Import and balance check (lot 10)
+    case 'import_changed':
+      return 'Les opérations ont changé entre-temps : recommence l’import.'
+    case 'balance_changed':
+      return 'Le solde a changé pendant la vérification (une autre écriture) : réessaie.'
     // Operations (lot 9)
     case 'duplicate_unconfirmed':
       return "Une opération de même montant et même date de valeur vient d'apparaître : vérifie, puis confirme."

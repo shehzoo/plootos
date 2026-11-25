@@ -29,3 +29,12 @@ export function suggestionKey(normalizedLabel: string): string {
     .trim()
     .toUpperCase()
 }
+
+/**
+ * Key of a label for R8 (already present): case and accents ignored. The bank changed the case
+ * of its labels between the statements of October and November 2026 (« PAIEMENT PAR CARTE » then
+ * « Paiement par carte »): an operation imported from each must still be recognized.
+ */
+export function presenceKey(normalizedLabel: string): string {
+  return normalizedLabel.normalize('NFD').replace(/\p{M}/gu, '').toUpperCase()
+}

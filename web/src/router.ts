@@ -38,6 +38,8 @@ export interface Place {
   newLine: { categoryId: number | null } | null
   /** /operations/categoriser: screen 3.3, all the operations to categorize (computer). */
   categorize: boolean
+  /** /operations/importer: import of a statement (spec 3.2, 4.4, computer; lot 10). */
+  importing: boolean
   /** ?ajout on Mois or Opérations: the manual entry is open (spec 3.2, lot 9). */
   adding: boolean
 }
@@ -55,12 +57,16 @@ export function placeFromLocation(pathname: string, search: string): Place {
   const tab: BudgetTab = section === 'budget' && (parts[1] === 'categories' || parts[1] === 'donnees') ? parts[1] : 'lignes'
   const newLine = section === 'budget' && tab === 'lignes' && params.has('nouvelle') ? { categoryId: id('nouvelle') } : null
   const categorize = section === 'operations' && parts[1] === 'categoriser'
-  const adding = (section === 'mois' || section === 'operations') && !categorize && params.has('ajout')
-  return { section, tab, month, categoryId: id('categorie'), operationId: id('operation'), lineId: id('ligne'), newLine, categorize, adding }
+  const importing = section === 'operations' && parts[1] === 'importer'
+  const adding = (section === 'mois' || section === 'operations') && !categorize && !importing && params.has('ajout')
+  return { section, tab, month, categoryId: id('categorie'), operationId: id('operation'), lineId: id('ligne'), newLine, categorize, importing, adding }
 }
 
 /** Screen 3.3, Catégoriser (computer). */
 export const CATEGORIZE_PATH = '/operations/categoriser'
+
+/** Import of a statement (computer, DECISIONS.md 2026-11-25). */
+export const IMPORT_PATH = '/operations/importer'
 
 /** The same screen, its detail closed, with the manual entry open: a phone's back button closes it. */
 export const addingPath = (pathname: string) => `${pathname}?ajout`

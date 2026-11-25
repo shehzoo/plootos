@@ -7,8 +7,9 @@
 // month, « Ajouter une ligne de budget » (DECISIONS.md, 2026-11-25).
 //
 // Lot 9: « + Ajout manuel » (the + button on a phone), except on a future month; « Catégoriser »
-// on a computer; an operation in the detail of a category opens its record. Import and balance
-// check (lot 10) stay hidden until then.
+// on a computer; an operation in the detail of a category opens its record.
+//
+// Lot 10: « Importer relevé bancaire (XLSX) » on a computer (spec 3.0).
 
 import { Fragment, type ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
@@ -19,7 +20,7 @@ import { Icon } from '../icons'
 import { OverrideDialog } from '../budget/LineEditor'
 import { overrideTarget } from '../budget/lines'
 import { AddButton } from '../operations/OperationsScreen'
-import { addingPath, back, budgetPath, CATEGORIZE_PATH, monthPath, navigate, newLinePath, operationsPath, type Place } from '../router'
+import { addingPath, back, budgetPath, CATEGORIZE_PATH, IMPORT_PATH, monthPath, navigate, newLinePath, operationsPath, type Place } from '../router'
 import {
   band,
   checkText,
@@ -247,6 +248,11 @@ function MonthBand(props: {
             {kind !== 'current' && (
               <button type="button" class="pl-btn label" onClick={() => go(bounds.current)}>
                 Mois en cours
+              </button>
+            )}
+            {kind !== 'future' && (
+              <button type="button" class="pl-btn label" onClick={() => navigate(IMPORT_PATH)}>
+                Importer relevé bancaire (XLSX)
               </button>
             )}
             {kind !== 'future' && (

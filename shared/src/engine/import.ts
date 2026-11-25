@@ -1,6 +1,7 @@
 // Sorting of an import (R8, R9, spec 4.4): already present, manual operations to merge, new.
 // The Worker runs it on preview and again just before writing; the browser shows its result.
 
+import { presenceKey } from './labels'
 import type { Id, IsoDate, Operation } from './model'
 
 /** One operation read from the statement, label already normalized. */
@@ -34,7 +35,7 @@ export interface ImportSort {
 }
 
 const rowKey = (r: Pick<ImportRow, 'opDate' | 'valueDate' | 'amountCents' | 'bankLabel'>) =>
-  `${r.opDate}|${r.valueDate}|${r.amountCents}|${r.bankLabel}`
+  `${r.opDate}|${r.valueDate}|${r.amountCents}|${presenceKey(r.bankLabel)}`
 const mergeKey = (valueDate: IsoDate, amountCents: number) => `${valueDate}|${amountCents}`
 
 export function sortImport(rows: ImportRow[], operations: Operation[], openingBalanceDate: IsoDate): ImportSort {
@@ -104,7 +105,7 @@ export interface MergePair {
  * Checks the pairs confirmed by the person against a sort: each pair within one group, each
  * row and each manual operation used once. Rows of a group left without a pair import as new.
  */
-export function checkMergePairs(sort: ImportSort, pairs: MergePair[]): boolean {
+export function checkMergePairs(sort: Pick<ImportSort, 'toMerge'>, pairs: MergePair[]): boolean {
   const rowGroup = new Map<number, MergeGroup>()
   for (const g of sort.toMerge) for (const i of g.rowIndexes) rowGroup.set(i, g)
   const rows = new Set<number>()
@@ -129,7 +130,7 @@ export function checkMergePairs(sort: ImportSort, pairs: MergePair[]): boolean {
 export function importBalanceGap(
   balanceAt: (date: IsoDate) => number,
   rows: ImportRow[],
-  sort: ImportSort,
+  sort: Pick<ImportSort, 'fresh' | 'toMerge'>,
   pairs: MergePair[],
   statement: { date: IsoDate; balanceCents: number },
 ): number {
