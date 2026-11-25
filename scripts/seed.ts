@@ -2,7 +2,7 @@
 //
 //   npx tsx scripts/seed.ts mask                 GitHub Actions: masks the allowed addresses
 //   npx tsx scripts/seed.ts drop                 SQL dropping every table, migration history included
-//   npx tsx scripts/seed.ts data <set> [month]   SQL of a data set: exemple, exemple-15-03, 3-ans [last month], vide
+//   npx tsx scripts/seed.ts data <set> [month]   SQL of a data set: exemple, exemple-15-03, cas-a-b, 3-ans [last month], vide
 //   npx tsx scripts/seed.ts local <set> [month]  local database of `npm run dev`: drop, migrate, load
 //
 // Authors are the addresses of ALLOWED_USERS (person 1 is the first one): the staging secret in
@@ -12,12 +12,12 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { exampleSeedInput } from '../shared/fixtures/example'
+import { casesABSeedInput, exampleSeedInput } from '../shared/fixtures/example'
 import { dropSql, seedSql, toSeed, type Authors } from '../shared/fixtures/seed'
 import { threeYearsSeedInput } from '../shared/fixtures/three-years'
 import { isMonth } from '../shared/src/engine/dates'
 
-const SETS = ['exemple', 'exemple-15-03', '3-ans', 'vide'] as const
+const SETS = ['exemple', 'exemple-15-03', 'cas-a-b', '3-ans', 'vide'] as const
 
 function fail(message: string): never {
   console.error(message)
@@ -48,6 +48,8 @@ function dataSql(set: string, month: string | undefined, raw: string | undefined
   if (set === 'exemple') return seedSql(toSeed(exampleSeedInput(), authors(raw)))
   // The example month as entered on the evening of 15/03 (spec 1.3, U5).
   if (set === 'exemple-15-03') return seedSql(toSeed(exampleSeedInput({ enteredUpTo: '2027-03-15' }), authors(raw)))
+  // Cases A and B of spec 1.4, played through the app (lot 8).
+  if (set === 'cas-a-b') return seedSql(toSeed(casesABSeedInput(), authors(raw)))
   if (set === '3-ans') return seedSql(toSeed(threeYearsSeedInput({ endMonth: month }), authors(raw)))
   return fail(`Data set: ${SETS.join(', ')}`)
 }

@@ -34,6 +34,8 @@ export interface Place {
   operationId: number | null
   /** ?ligne=ID: the record of a budget line, open (Budget). */
   lineId: number | null
+  /** ?nouvelle or ?nouvelle=ID: the panel of a new budget line, its category chosen (Budget, computer). */
+  newLine: { categoryId: number | null } | null
 }
 
 export function placeFromLocation(pathname: string, search: string): Place {
@@ -47,7 +49,8 @@ export function placeFromLocation(pathname: string, search: string): Place {
     return raw !== null && /^\d+$/.test(raw) ? Number(raw) : null
   }
   const tab: BudgetTab = section === 'budget' && (parts[1] === 'categories' || parts[1] === 'donnees') ? parts[1] : 'lignes'
-  return { section, tab, month, categoryId: id('categorie'), operationId: id('operation'), lineId: id('ligne') }
+  const newLine = section === 'budget' && tab === 'lignes' && params.has('nouvelle') ? { categoryId: id('nouvelle') } : null
+  return { section, tab, month, categoryId: id('categorie'), operationId: id('operation'), lineId: id('ligne'), newLine }
 }
 
 /** Path of a month screen: the current month is "/", another one "/mois/AAAA-MM". */
@@ -70,6 +73,12 @@ export function operationsPath(month: Month | null, operationId: number | null =
 /** Budget: the month (a computer shows its year), and the line open in its record. */
 export function budgetPath(month: Month | null, lineId: number | null = null): string {
   return monthlyPath('/budget', month, 'ligne', lineId)
+}
+
+/** Budget, with the panel of a new line open, its category chosen (« Ajouter une ligne de budget », spec 3.4). */
+export function newLinePath(month: Month | null, categoryId: number | null = null): string {
+  const path = month === null ? '/budget' : `/budget/${month}`
+  return categoryId === null ? `${path}?nouvelle` : `${path}?nouvelle=${categoryId}`
 }
 
 /** Path of a tab of Budget. */

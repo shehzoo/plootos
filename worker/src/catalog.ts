@@ -2,70 +2,13 @@
 // balance. Every route reads what it needs to answer clearly, then writes one all-or-nothing
 // batch whose guards check the rules again at write time (R4, R10, "Modifié entre-temps").
 
-import type { Context } from 'hono'
 import { Hono } from 'hono'
-import { INITIAL_SECTIONS, type ApiError, type WriteResult } from '../../shared/src/api'
+import { INITIAL_SECTIONS, type ApiError } from '../../shared/src/api'
 import { addMonths, lastDayOfMonth, monthOf } from '../../shared/src/engine/dates'
+import { all, BadRequest, catalogBatch, fail, first, idParam, integer, MAX_CENTS, nameOf, readBody, respond, route, rowVersion, type C } from './request'
 import { serverToday } from './today'
 import type { AppEnv } from './types'
-import { SqlValue, WriteBatch, type Value, type WriteOutcome } from './write'
-
-type C = Context<AppEnv>
-
-class BadRequest extends Error {
-  constructor(readonly reason: string) {
-    super(reason)
-  }
-}
-
-const MAX_CENTS = 100_000_000_000
-
-async function readBody(c: C): Promise<Record<string, unknown>> {
-  let raw: unknown
-  try {
-    raw = await c.req.json()
-  } catch {
-    throw new BadRequest('json')
-  }
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new BadRequest('json')
-  return raw as Record<string, unknown>
-}
-
-function integer(v: unknown, reason: string, min: number, max: number): number {
-  if (typeof v !== 'number' || !Number.isSafeInteger(v) || v < min || v > max) throw new BadRequest(reason)
-  return v
-}
-
-const rowVersion = (v: unknown) => integer(v, 'row_version', 1, 1_000_000_000)
-
-function nameOf(v: unknown): string {
-  if (typeof v !== 'string') throw new BadRequest('name')
-  const name = v.trim()
-  if (name.length === 0 || name.length > 200) throw new BadRequest('name')
-  return name
-}
-
-function idParam(c: C): number {
-  const raw = c.req.param('id') ?? ''
-  if (!/^\d{1,9}$/.test(raw)) throw new BadRequest('id')
-  return Number(raw)
-}
-
-const fail = (c: C, status: 404 | 422, error: string) => c.json({ error } satisfies ApiError, status)
-
-function respond(c: C, out: WriteOutcome) {
-  if (out.ok) return c.json({ ok: true, ids: out.insertedIds } satisfies WriteResult)
-  return c.json(out.body, out.status)
-}
-
-const first = <T>(c: C, sql: string, ...params: unknown[]) => c.env.DB.prepare(sql).bind(...params).first<T>()
-const all = async <T>(c: C, sql: string, ...params: unknown[]) =>
-  (await c.env.DB.prepare(sql).bind(...params).all<T>()).results
-
-/** A write batch for the person of the request; nothing is written before the app is set up. */
-function catalogBatch(c: C): WriteBatch {
-  return new WriteBatch(c.env.DB, c.get('user').email).guard('EXISTS (SELECT 1 FROM opening_balance)', [], 'not_set_up')
-}
+import { SqlValue, WriteBatch, type Value } from './write'
 
 const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
 
@@ -93,15 +36,6 @@ interface CategoryRow {
   parent_id: number | null
   section_id: number | null
   archived_at: string | null
-}
-
-const route = (fn: (c: C) => Promise<Response>) => async (c: C) => {
-  try {
-    return await fn(c)
-  } catch (e) {
-    if (e instanceof BadRequest) return c.json({ error: 'bad_request', reason: e.reason } satisfies ApiError, 400)
-    throw e
-  }
 }
 
 export const catalog = new Hono<AppEnv>()

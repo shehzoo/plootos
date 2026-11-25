@@ -3,6 +3,7 @@
 
 import type { Direction, Month } from '../../../shared/src/engine'
 import type { AppData } from '../../../shared/src/wire'
+import { lineErrorText } from './lines'
 
 export interface CatalogItem {
   id: number
@@ -97,6 +98,6 @@ export function ruleText(code: string): string {
     case 'bad_request':
       return 'Valeur refusée.'
     default:
-      return 'Écriture refusée.'
+      return lineErrorText(code) || 'Écriture refusée.'
   }
 }

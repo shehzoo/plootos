@@ -67,7 +67,7 @@ export class WriteBatch {
   constructor(
     private readonly db: D1Database,
     private readonly author: string,
-    private readonly now: string = new Date().toISOString(),
+    readonly now: string = new Date().toISOString(),
   ) {
     // While a restore runs, every write is refused (spec 4.3).
     this.guard('NOT EXISTS (SELECT 1 FROM meta WHERE restore_in_progress = 1)', [], 'restore_in_progress')

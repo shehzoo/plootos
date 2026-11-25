@@ -36,6 +36,7 @@ En local seulement, `DEV_AUTH_EMAIL` remplace Access ; le Worker l'ignore hors d
 ```sh
 npm run seed -- exemple          # base locale : mois d'exemple (spec 1.3), pour la date simulée du 01/04
 npm run seed -- exemple-15-03    # le mois d'exemple tel qu'entré le 15/03 au soir
+npm run seed -- cas-a-b          # le mois d'exemple et l'opération du cas B (spec 1.4), pour rejouer les cas A et B
 npm run seed -- 3-ans [AAAA-MM]  # 36 mois fictifs finissant à ce mois (mars 2027 par défaut)
 npm run seed -- vide             # base vide, comme avant la mise en service
 ```
@@ -60,6 +61,7 @@ seulement les variables et les classes du design system.
 | Lecture | `GET /api/data` : tout sauf les opérations, et le nombre de pages ; `GET /api/data/operations/:page` : 1 000 opérations et leurs parts. L'appli lit les pages en parallèle et relit tout si une page cite un élément inconnu. SQLite construit le JSON par paquets de 200 rangées (`worker/src/read.ts`) ; les auteurs y sont des prénoms, jamais des adresses |
 | Écriture | `WriteBatch` (`worker/src/write.ts`) : un lot D1 tout-ou-rien ; auteur et dates remplis ; `row_version` vérifié par une « garde » dans le lot (conflit : 409 `conflict` avec les éléments modifiés) ; refus pendant une restauration |
 | Écritures du catalogue (lot 7) | `worker/src/catalog.ts` : `POST /api/setup` (solde initial, six sections, base vide seulement), sections et catégories (`POST`, `PATCH`, `…/archive`), `POST /api/order` (ordre complet d'un groupe), `PATCH /api/opening-balance`. R4 (aucune ligne active) et R10 (même sens, parente fixe, première sous-catégorie confirmée) sont vérifiées par des gardes du lot D1. Côté appli : `apiSend` (`web/src/api.ts`) et `useWriter` (`web/src/budget/write.ts`) envoient, relisent toutes les données et expliquent un refus ou « Modifié entre-temps » |
+| Écritures des lignes de budget (lot 8) | `worker/src/lines.ts` : `POST /api/budget-lines` (création, calée sur le mois de début), `PATCH /api/budget-lines/:id` (nom, et/ou nouvelle version à partir d'un mois, R3), `…/archive` (dernier mois, R4), `…/override` et `…/override/remove` (surcharge d'un mois en cours ou à venir ; changer une surcharge la retire et en crée une nouvelle). Le Worker calcule le changement avec les mêmes fonctions pures que l'appli (`shared/src/engine/versions.ts`) ; le lot est gardé par le `row_version` de la ligne, que toute écriture sur ses versions et surcharges augmente. Côté appli : `web/src/budget/lines.ts` (aperçu avant confirmation) et `web/src/budget/LineEditor.tsx` (panneaux et fenêtre de surcharge, sur ordinateur seulement) |
 | Contrôles de chaque requête | `worker/src/security.ts` : numéro de compatibilité (`X-Plootos-Api`, sinon 409 `app_outdated` et l'appli se recharge), origine et JSON pour une écriture, en-têtes de sécurité et CSP stricte |
 | Journaux | Workers Logs coupés ; le Worker n'écrit que des codes fixes |
 
@@ -76,7 +78,7 @@ Secrets de chaque environnement GitHub (`staging`, `production`) :
 `ALLOWED_USERS` (`{"adresse": "Prénom"}`).
 
 Action « Données de recette » (« Run workflow », sur `main` ou la branche d'un lot) : vide toute
-la base de recette, réapplique les migrations et charge un jeu fictif (exemple, exemple au 15/03, 3 ans ou vide).
+la base de recette, réapplique les migrations et charge un jeu fictif (exemple, exemple au 15/03, cas A et B, 3 ans ou vide).
 Elle n'a accès qu'à la recette. La personne 1 des données est la première adresse de
 `ALLOWED_USERS`.
 

@@ -184,7 +184,7 @@ export function App() {
       <div class={`content${ctx ? ' content--month' : ''}`}>
         {ctx ? (
           <main>
-            {section === 'mois' && <MonthScreen ctx={ctx} place={place} narrow={narrow} />}
+            {section === 'mois' && <MonthScreen ctx={ctx} place={place} narrow={narrow} refresh={refresh} />}
             {section === 'operations' && <OperationsScreen ctx={ctx} place={place} narrow={narrow} />}
             {section === 'projection' && <ProjectionScreen ctx={ctx} narrow={narrow} />}
             {section === 'budget' && <BudgetArea ctx={ctx} place={place} narrow={narrow} refresh={refresh} />}

@@ -187,3 +187,59 @@ export interface OpeningBalanceRequest {
   rowVersion: number
   amountCents: number
 }
+
+// Writes of lot 8: budget lines and overrides (spec 3.6, R3, R4). Amounts are positive cents.
+
+/** Rhythm of a new version. An "every N months" rhythm may leave its anchor out: kept (R3). */
+export type RhythmRequest =
+  | { kind: 'every_n'; everyN: number; anchorMonth?: string }
+  | { kind: 'months'; months: number[] }
+
+/** POST /api/budget-lines: a new line, anchored on its first month (spec 3.6). */
+export interface NewLineRequest {
+  label: string
+  categoryId: number
+  amountCents: number
+  /** The current month at the earliest. */
+  startMonth: string
+  rhythm: { kind: 'every_n'; everyN: number } | { kind: 'months'; months: number[] }
+}
+
+/** A change of amount, category or rhythm from a month on: a new version (R3). */
+export interface LineChangeRequest {
+  fromMonth: string
+  categoryId: number
+  amountCents: number
+  rhythm: RhythmRequest
+}
+
+/** PATCH /api/budget-lines/:id: a new name (no version), a change (R3), or both. */
+export interface UpdateLineRequest {
+  rowVersion: number
+  label?: string
+  change?: LineChangeRequest
+}
+
+/** POST /api/budget-lines/:id/archive: its last month, the month before the current one at the earliest (R4). */
+export interface ArchiveLineRequest {
+  rowVersion: number
+  lastMonth: string
+}
+
+/**
+ * POST /api/budget-lines/:id/override: the amount of a month where the line applies (current
+ * or later). An override already there is marked removed and a new one created (DECISIONS.md,
+ * 2026-11-25). 0 cancels the line that month.
+ */
+export interface OverrideRequest {
+  rowVersion: number
+  month: string
+  amountCents: number
+  reason: string | null
+}
+
+/** POST /api/budget-lines/:id/override/remove */
+export interface RemoveOverrideRequest {
+  rowVersion: number
+  month: string
+}
