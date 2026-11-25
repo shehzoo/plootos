@@ -176,6 +176,9 @@ export interface OverrideHistory {
   removed: boolean
   by: string
   on: string
+  /** Who removed it, and when (its last author, spec 4.5). */
+  removedBy: string
+  removedOn: string
 }
 
 export interface LineRecord {
@@ -236,6 +239,8 @@ export function lineRecord(ctx: MonthContext, lineId: Id): LineRecord | null {
         removed: o.removedAt !== null,
         by: o.createdBy,
         on: o.createdAt.slice(0, 10),
+        removedBy: o.updatedBy,
+        removedOn: (o.removedAt ?? o.updatedAt).slice(0, 10),
       })),
   }
 }

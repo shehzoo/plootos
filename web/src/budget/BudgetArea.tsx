@@ -14,7 +14,7 @@ const TABS: { id: BudgetTab; label: string }[] = [
 ]
 
 export function BudgetArea({ ctx, place, narrow, refresh }: { ctx: MonthContext; place: Place; narrow: boolean; refresh: () => Promise<void> }) {
-  if (narrow) return <BudgetScreen ctx={ctx} place={place} narrow />
+  if (narrow) return <BudgetScreen ctx={ctx} place={place} narrow refresh={refresh} />
   return (
     <>
       <nav class="pl-seg budget-tabs" aria-label="Budget">
@@ -29,7 +29,7 @@ export function BudgetArea({ ctx, place, narrow, refresh }: { ctx: MonthContext;
       ) : place.tab === 'donnees' ? (
         <DataScreen ctx={ctx} refresh={refresh} />
       ) : (
-        <BudgetScreen ctx={ctx} place={place} narrow={false} />
+        <BudgetScreen ctx={ctx} place={place} narrow={false} refresh={refresh} />
       )}
     </>
   )

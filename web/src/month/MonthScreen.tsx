@@ -1,17 +1,22 @@
 // Screens 3.1 (current month, and a future month: the planned only) and 3.4 (closed month),
-// on a computer and on a phone, read only (lot 5). Drawn with the design system's classes
-// (pl-*, DESIGN.md); the figures come from ./view.ts.
+// on a computer and on a phone (lot 5). Drawn with the design system's classes (pl-*,
+// DESIGN.md); the figures come from ./view.ts.
 //
-// Actions of later lots (import, manual entry and the + button, override, categorize, check the
-// balance, links to lines and operations) are hidden until their lot (DECISIONS.md, 2026-11-25).
+// Lot 8: in the detail of a category, a line's name opens it in Budget; on a computer,
+// « Surcharger ce mois » (current or later month) and, for an off-budget category of a closed
+// month, « Ajouter une ligne de budget » (DECISIONS.md, 2026-11-25). Actions of later lots
+// (import, manual entry and the + button, categorize, check the balance, links to operations)
+// stay hidden until their lot.
 
 import { Fragment, type ComponentChildren } from 'preact'
-import { useEffect } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { lastDayOfMonth, addMonths, type Id, type Month } from '../../../shared/src/engine'
 import { useFoldedSections } from '../display'
 import { count, euros, eurosOrMinus, monthName, monthTitle, shortDate, signedEuros } from '../format'
 import { Icon } from '../icons'
-import { back, monthPath, navigate, type Place } from '../router'
+import { OverrideDialog } from '../budget/LineEditor'
+import { overrideTarget } from '../budget/lines'
+import { back, budgetPath, monthPath, navigate, newLinePath, type Place } from '../router'
 import {
   band,
   checkText,
@@ -406,7 +411,16 @@ function Figures({ view, kind }: { view: DetailView; kind: MonthKind }) {
   )
 }
 
-function DetailContent({ view, month, kind, openSub }: { view: DetailView; month: Month; kind: MonthKind; openSub?: (id: Id) => void }) {
+/** Writing from the detail of a category, on a computer only (spec 3.0). */
+interface DetailActions {
+  override: (lineId: Id) => void
+  addLine: () => void
+}
+
+function DetailContent(props: { view: DetailView; month: Month; kind: MonthKind; bounds: MonthBounds; openSub?: (id: Id) => void; actions?: DetailActions }) {
+  const { view, month, kind, openSub, actions } = props
+  // A line opens in Budget, at its month (a computer shows the year).
+  const openLine = (id: Id) => navigate(budgetPath(month === props.bounds.current ? null : month, id))
   return (
     <>
       <Figures view={view} kind={kind} />
@@ -438,12 +452,25 @@ function DetailContent({ view, month, kind, openSub }: { view: DetailView; month
         {view.lines.map((l) => (
           <div key={l.budgetLineId} class="pl-op table">
             <span>
-              {l.label}
+              <button type="button" class="detail-link" onClick={() => openLine(l.budgetLineId)}>
+                {l.label}
+              </button>
               <small class="caption">{l.caption}</small>
+              {actions && kind !== 'closed' && (
+                <button type="button" class="pl-btn pl-btn--ghost label detail-action" onClick={() => actions.override(l.budgetLineId)}>
+                  Surcharger ce mois
+                </button>
+              )}
             </span>
             <span class="pl-num">{euros(l.amountCents)}</span>
           </div>
         ))}
+        {actions && kind === 'closed' && view.row.status === 'off_budget' && (
+          <button type="button" class="pl-btn label detail-add" onClick={actions.addLine}>
+            <Icon name="plus" />
+            Ajouter une ligne de budget
+          </button>
+        )}
       </div>
       {view.operations && (
         <div class="pl-group">
@@ -466,7 +493,7 @@ function DetailContent({ view, month, kind, openSub }: { view: DetailView; month
   )
 }
 
-function DetailPanel({ view, month, kind, close }: { view: DetailView; month: Month; kind: MonthKind; close: () => void }) {
+function DetailPanel({ view, month, kind, bounds, close, actions }: { view: DetailView; month: Month; kind: MonthKind; bounds: MonthBounds; close: () => void; actions: DetailActions }) {
   return (
     <aside class="pl-panel month-panel" aria-label={`Détail : ${view.name}`}>
       <div class="month-panel__head">
@@ -478,7 +505,7 @@ function DetailPanel({ view, month, kind, close }: { view: DetailView; month: Mo
           Fermer
         </button>
       </div>
-      <DetailContent view={view} month={month} kind={kind} />
+      <DetailContent view={view} month={month} kind={kind} bounds={bounds} actions={actions} />
     </aside>
   )
 }
@@ -552,7 +579,7 @@ function PhoneDetail({ view, month, kind, bounds }: { view: DetailView; month: M
         </div>
       </header>
       <div class="pl-panel detail-page__panel">
-        <DetailContent view={view} month={month} kind={kind} openSub={(id) => navigate(pathOf(month, bounds, id))} />
+        <DetailContent view={view} month={month} kind={kind} bounds={bounds} openSub={(id) => navigate(pathOf(month, bounds, id))} />
       </div>
     </div>
   )
@@ -560,8 +587,9 @@ function PhoneDetail({ view, month, kind, bounds }: { view: DetailView; month: M
 
 // The screen
 
-export function MonthScreen({ ctx, place, narrow }: { ctx: MonthContext; place: Place; narrow: boolean }) {
+export function MonthScreen({ ctx, place, narrow, refresh }: { ctx: MonthContext; place: Place; narrow: boolean; refresh: () => Promise<void> }) {
   const [folded, toggle] = useFoldedSections()
+  const [overriding, setOverriding] = useState<Id | null>(null)
   const bounds = monthBounds(ctx)
   const month = clampMonth(place.month, bounds)
   const kind = kindOf(month, bounds)
@@ -581,6 +609,8 @@ export function MonthScreen({ ctx, place, narrow }: { ctx: MonthContext; place: 
     if (narrow) navigate(pathOf(month, bounds, id))
     else navigate(pathOf(month, bounds, place.categoryId === id ? null : id), { replace: true })
   }
+
+  const target = overriding === null || narrow ? null : overrideTarget(ctx, overriding, month)
 
   if (narrow && view) return <PhoneDetail view={view} month={month} kind={kind} bounds={bounds} />
 
@@ -611,8 +641,18 @@ export function MonthScreen({ ctx, place, narrow }: { ctx: MonthContext; place: 
         {empty || (
           <BudgetTable sections={list} kind={kind} selected={view?.id ?? null} folded={folded} toggle={toggle} open={open} total={total} />
         )}
-        {view && <DetailPanel view={view} month={month} kind={kind} close={() => navigate(pathOf(month, bounds), { replace: true })} />}
+        {view && (
+          <DetailPanel
+            view={view}
+            month={month}
+            kind={kind}
+            bounds={bounds}
+            close={() => navigate(pathOf(month, bounds), { replace: true })}
+            actions={{ override: setOverriding, addLine: () => navigate(newLinePath(null, view.id)) }}
+          />
+        )}
       </div>
+      {target && <OverrideDialog key={`${target.lineId}-${target.month}`} target={target} refresh={refresh} onClose={() => setOverriding(null)} />}
     </div>
   )
 }

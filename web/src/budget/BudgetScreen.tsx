@@ -1,15 +1,18 @@
 // Screen 3.6, budget lines: a year grid on a computer, one month on a phone, and the record of
-// a line (its versions and overrides), read only (lot 6). Creating, changing, archiving and
-// overriding arrive in lot 8 and stay hidden until then; so do the tabs « Catégories » and
-// « Données » (lot 7), DECISIONS.md, 2026-11-25.
+// a line (its versions and overrides). On a computer (lot 8): « + Nouvelle ligne », a click on
+// the cell of a current or later month overrides it, a click on a line's name opens its panel
+// (change, archive). A phone only reads (spec 3.0).
 
 import { Fragment } from 'preact'
+import { useState } from 'preact/hooks'
 import { addMonths, type Id, type Month } from '../../../shared/src/engine'
 import { useFoldedSections } from '../display'
 import { euros, fullDate, monthTitle, plainEuros, signedEuros, signedPlainEuros } from '../format'
 import { Icon } from '../icons'
 import type { MonthContext } from '../month/view'
-import { back, budgetPath, navigate, type Place } from '../router'
+import { back, budgetPath, navigate, newLinePath, type Place } from '../router'
+import { LinePanel, NewLinePanel, OverrideDialog } from './LineEditor'
+import { overrideTarget } from './lines'
 import {
   budgetBounds,
   budgetView,
@@ -79,9 +82,10 @@ function Record({ record }: { record: LineRecord }) {
               <small class="caption">
                 par {o.by}
                 {o.on ? ` le ${fullDate(o.on)}` : ''}
+                {o.removed ? ` · retirée par ${o.removedBy} le ${fullDate(o.removedOn)}` : ''}
               </small>
             </span>
-            <span class="pl-num">{euros(o.amountCents)}</span>
+            <span class={`pl-num${o.removed ? ' pl-muted' : ''}`}>{euros(o.amountCents)}</span>
           </div>
         ))}
       </div>
@@ -100,6 +104,8 @@ function YearGrid(props: {
   folded: Set<number>
   toggle: (id: number) => void
   open: (id: Id) => void
+  /** Null on a phone; else opens the override of a line's month (current or later, where it applies). */
+  override: ((lineId: Id, month: Month) => void) | null
 }) {
   const { months, current, selected, folded, toggle } = props
   const past = (m: Month) => (m < current ? ' budget-past' : '')
@@ -136,11 +142,30 @@ function YearGrid(props: {
                       <b>{l.label}</b>
                       <small class="caption pl-muted">{l.categoryPath}</small>
                     </button>
-                    {l.cells.map((c) => (
-                      <span key={c.month} class={`pl-num${c.past ? ' budget-past' : ''}${c.overridden ? ' budget-over' : ''}`} title={monthTitle(c.month)}>
-                        {c.amountCents === null ? '' : plainEuros(c.amountCents)}
-                      </span>
-                    ))}
+                    {l.cells.map((c) => {
+                      const cls = `pl-num${c.past ? ' budget-past' : ''}${c.overridden ? ' budget-over' : ''}`
+                      const text = c.amountCents === null ? '' : plainEuros(c.amountCents)
+                      if (props.override && !c.past && c.amountCents !== null) {
+                        const override = props.override
+                        return (
+                          <span key={c.month} class={cls}>
+                            <button
+                              type="button"
+                              class="budget-cell"
+                              aria-label={`Surcharger ${l.label}, ${monthTitle(c.month)} : ${euros(c.amountCents)}${c.overridden ? ', surchargé' : ''}`}
+                              onClick={() => override(l.id, c.month)}
+                            >
+                              {text}
+                            </button>
+                          </span>
+                        )
+                      }
+                      return (
+                        <span key={c.month} class={cls} title={monthTitle(c.month)}>
+                          {text}
+                        </span>
+                      )
+                    })}
                   </div>
                 ))}
             </Fragment>
@@ -207,8 +232,9 @@ function PhoneMonth(props: { sections: BudgetSectionView[]; net: number; folded:
   )
 }
 
-export function BudgetScreen({ ctx, place, narrow }: { ctx: MonthContext; place: Place; narrow: boolean }) {
+export function BudgetScreen({ ctx, place, narrow, refresh }: { ctx: MonthContext; place: Place; narrow: boolean; refresh: () => Promise<void> }) {
   const [folded, toggle] = useFoldedSections()
+  const [overriding, setOverriding] = useState<{ lineId: Id; month: Month } | null>(null)
   const bounds = budgetBounds(ctx)
   const month = clampBudgetMonth(place.month, bounds)
   const months = narrow ? [month] : yearMonths(month)
@@ -271,6 +297,9 @@ export function BudgetScreen({ ctx, place, narrow }: { ctx: MonthContext; place:
   }
 
   const year = month.slice(0, 4)
+  const close = () => navigate(pathOf(month, bounds), { replace: true })
+  const target = overriding ? overrideTarget(ctx, overriding.lineId, overriding.month) : null
+  const panelLine = place.newLine ? null : record
   return (
     <div class="month">
       <header class="ops-head">
@@ -298,6 +327,10 @@ export function BudgetScreen({ ctx, place, narrow }: { ctx: MonthContext; place:
             <Icon name="chevron-droite" />
           </button>
         </div>
+        <button type="button" class="pl-btn pl-btn--primary label" onClick={() => navigate(newLinePath(month === bounds.current ? null : month), { replace: true })}>
+          <Icon name="plus" />
+          Nouvelle ligne
+        </button>
       </header>
       <div class="month__body">
         <div class="month-table">
@@ -309,28 +342,31 @@ export function BudgetScreen({ ctx, place, narrow }: { ctx: MonthContext; place:
               months={view.months}
               net={view.net}
               current={bounds.current}
-              selected={record?.id ?? null}
+              selected={panelLine?.id ?? null}
               folded={folded}
               toggle={toggle}
               open={open}
+              override={(lineId, m) => setOverriding({ lineId, month: m })}
             />
           )}
         </div>
-        {record && (
-          <aside class="pl-panel month-panel" aria-label={`Ligne : ${record.label}`}>
-            <div class="month-panel__head">
-              <div>
-                <h2 class="title-m">{record.label}</h2>
-                <span class="caption pl-muted">{record.categoryPath}</span>
-              </div>
-              <button type="button" class="pl-btn pl-btn--ghost label" onClick={() => navigate(pathOf(month, bounds), { replace: true })}>
-                Fermer
-              </button>
-            </div>
-            <Record record={record} />
-          </aside>
+        {place.newLine && (
+          <NewLinePanel
+            key={`new-${place.newLine.categoryId ?? ''}`}
+            ctx={ctx}
+            categoryId={place.newLine.categoryId}
+            refresh={refresh}
+            onClose={close}
+            onCreated={(id) => navigate(pathOf(month, bounds, id), { replace: true })}
+          />
+        )}
+        {panelLine && (
+          <LinePanel key={panelLine.id} ctx={ctx} lineId={panelLine.id} sub={panelLine.categoryPath} refresh={refresh} onClose={close}>
+            <Record record={panelLine} />
+          </LinePanel>
         )}
       </div>
+      {target && <OverrideDialog key={`${target.lineId}-${target.month}`} target={target} refresh={refresh} onClose={() => setOverriding(null)} />}
     </div>
   )
 }

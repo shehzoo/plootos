@@ -365,6 +365,149 @@ body {
   white-space: normal;
 }
 
+/* An icon beside the text of a button (« + Nouvelle ligne »): provisional rule, to report in the design system */
+.pl-btn > svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+/* Writing budget lines and overrides (3.6, lot 8), computer only */
+.budget-cell {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  min-height: 28px;
+  text-align: right;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-s);
+  padding: 0 var(--space-1);
+  cursor: pointer;
+}
+
+.budget-cell:hover {
+  background: var(--surface-selected);
+}
+
+.budget-cell:focus-visible,
+.detail-link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.line-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.line-form .catalog-select {
+  max-width: 100%;
+}
+
+.line-select {
+  height: var(--size-control);
+}
+
+.line-form .pl-seg button {
+  white-space: nowrap;
+  padding: 0 var(--space-3);
+}
+
+.line-anchor {
+  margin-top: var(--space-2);
+}
+
+.line-rhythm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.line-n {
+  width: 64px;
+}
+
+.line-months {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.line-month {
+  padding: 0 var(--space-2);
+}
+
+.line-month[aria-pressed='true'] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.line-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-sunk);
+  border-radius: var(--radius-m);
+}
+
+.line-confirm p {
+  margin: 0;
+}
+
+.line-removed {
+  color: var(--warn);
+}
+
+.line-dialog {
+  width: min(440px, calc(100vw - var(--space-8)));
+  box-sizing: border-box;
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  background: var(--surface-card);
+  color: var(--ink);
+  box-shadow: var(--shadow-float);
+}
+
+.line-dialog::backdrop {
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.line-dialog__actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.detail-link {
+  font: inherit;
+  color: var(--primary);
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.detail-action {
+  height: auto;
+  min-height: 28px;
+  padding: 0;
+  margin-top: var(--space-1);
+}
+
+.detail-add {
+  margin-top: var(--space-2);
+}
+
 /* Categories (3.7), data and setup (3.8) */
 .budget-tabs {
   margin-bottom: var(--space-4);

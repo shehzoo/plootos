@@ -278,3 +278,30 @@ export function exampleSeedInput(options: Pick<ExampleOptions, 'enteredUpTo'> = 
     },
   }
 }
+
+/** The May operation of case B (spec 1.4): -150 € valued 15/05/2027, categorized Énergie. */
+export const CASE_B_OPERATION = { id: 14, valueDate: '2027-05-15', amountCents: euros(-150) }
+
+/**
+ * Data set "cas-a-b": the example month, plus the operation of case B, entered by hand and
+ * categorized Énergie (manual entry and categorization only arrive in lot 9). The rest of cases A
+ * and B is played through the app, with a simulated date (DECISIONS.md, 2026-11-25).
+ */
+export function casesABSeedInput(): SeedInput {
+  const input = exampleSeedInput()
+  const { id, valueDate, amountCents } = CASE_B_OPERATION
+  input.data.operations.push({
+    id,
+    opDate: valueDate,
+    valueDate,
+    amountCents,
+    origin: 'manual',
+    bankLabel: null,
+    bankLabelRaw: null,
+    dupRank: null,
+    comment: null,
+    archivedAt: null,
+  })
+  input.data.parts.push({ id: id * 10, operationId: id, categoryId: CAT.energy, amountCents })
+  return input
+}
