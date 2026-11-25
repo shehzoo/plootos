@@ -1,7 +1,7 @@
 // Decoding of GET /api/data into the model of the calculation engine, with the traceability
 // fields kept beside it (spec 2.1: created by, created on, modified by, modified on).
 
-import type { DataResponse, Row } from './api'
+import type { BaseResponse, DataResponse, OperationsPageResponse, Row } from './api'
 import type {
   BudgetData,
   BudgetLine,
@@ -162,4 +162,27 @@ export function budgetData(app: AppData): BudgetData | null {
     parts: app.parts,
     openingBalance: app.openingBalance,
   }
+}
+
+/** GET /api/data and every page of operations, joined into one answer. */
+export function assemble(base: BaseResponse, pages: OperationsPageResponse[]): DataResponse {
+  const { operationPages: _pages, tables, ...head } = base
+  const operation: Row[] = []
+  const operationPart: Row[] = []
+  for (const p of pages) {
+    for (const r of p.tables.operation) operation.push(r)
+    for (const r of p.tables.operation_part) operationPart.push(r)
+  }
+  return { ...head, tables: { ...tables, operation, operation_part: operationPart } }
+}
+
+/**
+ * The pages are read after the base, so a write in between can make a page cite an element the
+ * base does not have (an operation categorized in a category created meanwhile). The app then
+ * reads everything again.
+ */
+export function isConsistent(app: AppData): boolean {
+  const categories = new Set(app.categories.map((c) => c.id))
+  const operations = new Set(app.operations.map((o) => o.id))
+  return app.parts.every((p) => operations.has(p.operationId) && (p.categoryId === null || categories.has(p.categoryId)))
 }

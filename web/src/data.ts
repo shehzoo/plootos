@@ -1,13 +1,13 @@
-// Loading of all the data at start (spec 4.3), with the measures of the lot 3 criterion:
-// under 2 s on a phone with three years of data.
+// Loading of all the data at start (spec 4.3): the base, then every page of operations in
+// parallel. With the measures of the lot 3 criterion: under 2 s on a phone with three years.
 
-import type { DataResponse, Environment } from '../../shared/src/api'
+import type { BaseResponse, Environment, OperationsPageResponse } from '../../shared/src/api'
 import { addMonths, Ledger, monthOf } from '../../shared/src/engine'
-import { budgetData, decodeData, type AppData } from '../../shared/src/wire'
+import { assemble, budgetData, decodeData, isConsistent, type AppData } from '../../shared/src/wire'
 import { apiGetText, browserDeps, type ApiDeps } from './api'
 
 export interface LoadTimings {
-  /** Request sent to answer received (network and server). */
+  /** First request sent to last answer received (network and server). */
   networkMs: number
   /** JSON read and decoded into the engine's model. */
   readMs: number
@@ -25,6 +25,13 @@ export interface Loaded {
   ledger: Ledger | null
   timings: LoadTimings
   bytes: number
+  requests: number
+}
+
+export class InconsistentDataError extends Error {
+  constructor() {
+    super('inconsistent_data')
+  }
 }
 
 /**
@@ -45,24 +52,37 @@ export function computeAtStart(ledger: Ledger, today: string): number {
   return check
 }
 
+const ATTEMPTS = 3
+
 export async function loadData(deps: ApiDeps = browserDeps(), clock: () => number = () => performance.now()): Promise<Loaded> {
-  const t0 = clock()
-  const text = await apiGetText('/api/data', deps)
-  const t1 = clock()
-  const res = JSON.parse(text) as DataResponse
-  const app = decodeData(res)
-  const data = budgetData(app)
-  const t2 = clock()
-  const ledger = data ? new Ledger(data) : null
-  if (ledger) computeAtStart(ledger, res.today)
-  const t3 = clock()
-  return {
-    app,
-    environment: res.environment,
-    today: res.today,
-    todaySimulated: res.todaySimulated,
-    ledger,
-    timings: { networkMs: t1 - t0, readMs: t2 - t1, computeMs: t3 - t2, totalMs: t3 - t0 },
-    bytes: text.length,
+  for (let attempt = 1; ; attempt++) {
+    const t0 = clock()
+    const baseText = await apiGetText('/api/data', deps)
+    const base = JSON.parse(baseText) as BaseResponse
+    const pageTexts = await Promise.all(
+      Array.from({ length: base.operationPages }, (_, k) => apiGetText(`/api/data/operations/${k}`, deps)),
+    )
+    const t1 = clock()
+    const res = assemble(base, pageTexts.map((t) => JSON.parse(t) as OperationsPageResponse))
+    const app = decodeData(res)
+    if (!isConsistent(app)) {
+      if (attempt < ATTEMPTS) continue
+      throw new InconsistentDataError()
+    }
+    const data = budgetData(app)
+    const t2 = clock()
+    const ledger = data ? new Ledger(data) : null
+    if (ledger) computeAtStart(ledger, res.today)
+    const t3 = clock()
+    return {
+      app,
+      environment: res.environment,
+      today: res.today,
+      todaySimulated: res.todaySimulated,
+      ledger,
+      timings: { networkMs: t1 - t0, readMs: t2 - t1, computeMs: t3 - t2, totalMs: t3 - t0 },
+      bytes: baseText.length + pageTexts.reduce((n, t) => n + t.length, 0),
+      requests: 1 + pageTexts.length,
+    }
   }
 }
